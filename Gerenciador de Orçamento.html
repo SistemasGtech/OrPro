@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Orçamentos Unificado</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Libs jsPDF e AutoTable para geração vetorial direta -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background-color: #ffffff !important; color: #000000 !important; font-size: 12pt; padding: 0 !important; margin: 0 !important; }
+      #areaImpressao { display: block !important; position: static !important; width: 100% !important; border: none !important; box-shadow: none !important; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+  <!-- TELA DE LOGIN / AUTENTICAÇÃO -->
+  <div id="telaLogin" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-8 text-center relative">
+        <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg shadow-blue-500/30">
+          <i class="fa-solid fa-calculator"></i>
+        </div>
+        <h2 class="text-2xl font-black tracking-tight">OrçaFácil Pro</h2>
+        <p class="text-xs text-blue-200 mt-1">Acesse sua conta para gerenciar orçamentos</p>
+      </div>
+
+      <form onsubmit="realizarLogin(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Usuário (Login)</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="text" id="loginUsuario" required placeholder="Ex: admin" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Senha</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="password" id="loginSenha" required placeholder="••••••••" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs pt-1">
+          <label class="flex items-center text-slate-600 font-medium cursor-pointer">
+            <input type="checkbox" id="lembrarSessao" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 mr-1.5">
+            Lembrar meu acesso
+          </label>
+          <button type="button" onclick="abrirModalRecuperarSenha()" class="text-blue-600 hover:text-blue-800 font-bold underline">
+            Esqueci a senha
+          </button>
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition active:scale-95 flex items-center justify-center">
+          <i class="fa-solid fa-right-to-bracket mr-2 text-sm"></i> Entrar no Sistema
+        </button>
+
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-500 text-center">
+          Credencial Padrão: <strong class="text-slate-800">admin</strong> / Senha: <strong class="text-slate-800">123</strong>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- CONTAINER PRINCIPAL DO APLICATIVO -->
+  <div id="appContent" class="hidden">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20">
+            <i class="fa-solid fa-calculator text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900 leading-tight">OrçaFácil Pro</h1>
+            <p class="text-xs text-slate-500 font-medium">Orçamentos Integrados (Serviços + Corte)</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <button onclick="abrirModalEmpresa()" class="inline-flex items-center px-3.5 py-2 border border-slate-300 text-xs font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-gear mr-1.5 text-slate-400"></i> Configuração
+          </button>
+          <button onclick="abrirModalCatalogoMateriais()" class="inline-flex items-center px-3.5 py-2 border border-purple-300 text-xs font-semibold rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-layer-group mr-1.5"></i> Materiais
+          </button>
+          <button onclick="abrirModalServicos()" class="inline-flex items-center px-3.5 py-2 border border-blue-300 text-xs font-semibold rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-list-check mr-1.5"></i> Serviços
+          </button>
+          <button onclick="abrirModalHistorico()" class="inline-flex items-center px-3.5 py-2 border border-emerald-300 text-xs font-bold rounded-xl text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-clock-rotate-left mr-1.5 text-emerald-600"></i> Histórico (<span id="countHistoricoHeader">0</span>)
+          </button>
+          <button onclick="realizarLogout()" class="inline-flex items-center px-3 py-2 border border-rose-200 text-xs font-bold rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition shadow-sm active:scale-95 whitespace-nowrap ml-1" title="Sair do Sistema">
+            <i class="fa-solid fa-power-off mr-1"></i> Sair
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 no-print">
+
+      <!-- Card Dados do Cliente -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-2.5">
+              <i class="fa-solid fa-user-gear text-sm"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-800">Dados do Cliente e Proposta</h2>
+              <p class="text-[11px] text-slate-500">Identificação do cliente e prazos do orçamento</p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="carregarDadosExemplo()" class="text-xs text-slate-500 hover:text-blue-600 font-medium px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition">
+              <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Carregar Exemplo
+            </button>
+            <button onclick="limparTudo()" class="text-xs text-rose-500 hover:text-rose-700 font-medium px-2.5 py-1 rounded-lg border border-rose-100 hover:bg-rose-50 transition">
+              <i class="fa-solid fa-eraser mr-1"></i> Limpar
+            </button>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Nome do Cliente</label>
+            <input type="text" id="clienteNome" oninput="renderizarListaItensOrcamento()" placeholder="Ex: João Silva" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Telefone</label>
+            <input type="text" id="clienteTelefone" oninput="renderizarListaItensOrcamento()" placeholder="(11) 99999-8888" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Data do Orçamento</label>
+            <input type="date" id="dataOrcamento" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Validade da Proposta</label>
+            <input type="date" id="validadeOrcamento" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Coluna Principal (Painel Unificado) -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- PAINEL UNIFICADO: SERVIÇOS + PLANO DE CORTE -->
+          <div id="painelUnificado" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-24">
+            <div class="bg-slate-800 text-white p-4 flex flex-wrap justify-between items-center gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="w-8 h-8 bg-blue-500 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md">
+                  <i class="fa-solid fa-sliders"></i>
+                </span>
+                <div>
+                  <h2 class="text-base font-bold">Iniciar plano de orçamento</h2>
+                  <p class="text-[11px] text-slate-300">Descreva o serviço, marque os adicionais e configure o corte</p>
+                </div>
+              </div>
+              <input type="hidden" id="editItemId" value="">
+            </div>
+
+            <div class="p-4 space-y-5">
+              
+              <!-- CAMPO: DESCRIÇÃO DO ORÇAMENTO / ITEM -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                  <i class="fa-solid fa-pen-clip mr-1.5 text-blue-600"></i> Descrição do Orçamento / Item <span class="text-rose-600 ml-1 font-black">*</span>
+                </label>
+                <input type="text" id="fixoDescricao" oninput="this.classList.remove('border-rose-500', 'ring-2', 'ring-rose-500')" placeholder="Ex: Armário de Cozinha Suspenso, Fabricação de Balcão, Instalação de Painel..." class="w-full text-sm bg-white border border-slate-300 text-slate-800 font-medium rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+              </div>
+
+              <!-- BLOCO 1: SELEÇÃO DE SERVIÇOS PARA ESTE ITEM -->
+              <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-list-check mr-1.5 text-blue-600"></i> 1. Selecionar Serviços para este Item
+                  </h3>
+                  <button type="button" onclick="abrirModalServicos()" class="text-[11px] text-blue-700 hover:text-blue-900 font-semibold underline">
+                    + Gerenciar Catálogo
+                  </button>
+                </div>
+
+                <div id="painelCheckpointsServicos" class="space-y-2">
+                  <!-- Checkboxes Drenados via JS -->
+                </div>
+              </div>
+
+              <!-- BLOCO 2: PLANO DE CORTE ORGANIZADO -->
+              <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-4">
+                <div class="flex items-center justify-between border-b border-purple-200/60 pb-2">
+                  <h3 class="text-xs font-bold text-purple-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-layer-group mr-1.5 text-purple-600"></i> 2. Plano de Corte
+                  </h3>
+                  <button type="button" onclick="abrirModalCatalogoMateriais()" class="text-[11px] text-purple-700 hover:text-purple-900 font-semibold underline flex items-center">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> Gerenciar Materiais
+                  </button>
+                </div>
+
+                <!-- Parte 1: Seleção de Material + Valor do m² Bloqueado -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">Escolher Material Cadastrado</label>
+                    <select id="fixoMaterialId" onchange="aoSelecionarMaterialFixo(this.value)" class="w-full bg-white border border-purple-300 font-semibold text-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                      <!-- JS Populates -->
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-purple-900 mb-1 flex items-center justify-between">
+                      <span>Valor m² (R$)</span>
+                      <span class="text-[10px] text-slate-500 font-normal"><i class="fa-solid fa-lock text-[9px] mr-0.5"></i>Bloqueado</span>
+                    </label>
+                    <input type="number" id="fixoValorM2" readonly placeholder="0.00" class="w-full bg-slate-100 border border-purple-200 font-bold text-purple-950 rounded-xl px-3 py-2 text-xs text-right cursor-not-allowed focus:outline-none">
+                  </div>
+                </div>
+
+                <!-- Parte 2: Medidas do Material -->
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-purple-200/80 shadow-sm space-y-3.5">
+                  <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-2.5">
+                    <span class="text-xs font-bold text-slate-800 flex items-center">
+                      <i class="fa-solid fa-ruler-combined text-purple-600 mr-2 text-sm"></i> Medidas do Material
+                    </span>
+                    <div class="text-xs bg-purple-100/80 border border-purple-300 text-purple-950 font-black px-3 py-1.5 rounded-lg flex items-center space-x-1">
+                      <span class="text-[11px] text-purple-800 font-medium mr-1">Total m²:</span>
+                      <span id="displayAreaCalculada" class="font-bold">0,00m x 0,00m = 0,00 m²</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-1">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-1.5">Largura (m)</label>
+                      <input type="number" id="fixoLargura" min="0" step="0.01" placeholder="1.20" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-slate-50 border border-slate-300 text-center font-bold text-slate-800 rounded-xl py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-1.5">Comprimento (m)</label>
+                      <input type="number" id="fixoComprimento" min="0" step="0.01" placeholder="2.40" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-slate-50 border border-slate-300 text-center font-bold text-slate-800 rounded-xl py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Parte 3: Tempos de Corte e Valor do Tempo -->
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-purple-200/80 shadow-sm space-y-3.5">
+                  <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-2.5">
+                    <span class="text-xs font-bold text-slate-800 flex items-center">
+                      <i class="fa-solid fa-stopwatch text-purple-600 mr-2 text-sm"></i> Tempo e Valor do Corte
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <div id="displayMinutoVal" class="text-xs bg-purple-50 border border-purple-200 text-purple-900 font-bold px-3 py-1 rounded-lg">
+                        R$ 0,00 / min
+                      </div>
+                      <div id="displayCustoCorteVal" class="text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 font-extrabold px-3 py-1 rounded-lg">
+                        Total Corte: R$ 0,00
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-1">
+                    <div>
+                      <label class="block text-xs font-semibold text-purple-950 mb-1.5">Valor Serviço / Hora (R$/h)</label>
+                      <input type="number" id="fixoTempoServicoHora" min="0" step="0.01" placeholder="60.00" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-purple-50/60 border border-purple-200 font-bold text-right text-purple-950 rounded-xl py-2.5 px-3.5 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-semibold text-purple-950 mb-1.5">Tempo do Corte (minutos)</label>
+                      <input type="number" id="fixoTempoCorteMin" min="0" step="1" placeholder="30" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-purple-50/60 border border-purple-200 font-bold text-center text-purple-950 rounded-xl py-2.5 px-3.5 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+                <div class="text-xs space-y-1">
+                  <div class="flex flex-wrap gap-x-4 text-slate-300">
+                    <span>Serviços do Item: <strong id="prevSubServicos" class="text-white font-bold">R$ 0,00</strong></span>
+                    <span>Chapa + Corte: <strong id="prevSubCorte" class="text-white font-bold">R$ 0,00</strong></span>
+                  </div>
+                  <div class="text-sm">
+                    TOTAL DO ITEM: <strong id="prevTotalItem" class="text-emerald-400 font-black text-base">R$ 0,00</strong>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                  <button type="button" id="btnCancelarEditUnificado" onclick="cancelarEdicaoUnificada()" class="hidden text-xs bg-slate-700 hover:bg-slate-600 text-white font-medium px-3 py-2 rounded-xl transition">
+                    Cancelar
+                  </button>
+                  <button type="button" id="btnAdicionarUnificado" onclick="adicionarItemAoOrcamento()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-5 py-2.5 rounded-xl transition shadow-lg flex items-center">
+                    <i class="fa-solid fa-plus-circle mr-1.5 text-sm"></i> Adicionar ao Orçamento
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LISTA DO PEDIDO (COM DESTAQUE DO CLIENTE E CHECKPOINTS) -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                <i class="fa-solid fa-cart-flatbed mr-2 text-blue-600"></i> Lista do Pedido
+              </h3>
+              <div id="contagemSelecaoItens" class="text-xs text-slate-500 font-semibold">
+                <!-- JS Populates -->
+              </div>
+            </div>
+
+            <div id="listaItensOrcamento" class="space-y-3">
+              <!-- JS Populates -->
+            </div>
+          </div>
+
+        </div>
+
+        <div class="space-y-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm sticky top-20">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-receipt text-blue-600"></i>
+                <h2 class="text-base font-semibold text-slate-800">Resumo do Orçamento</h2>
+              </div>
+              <span class="text-[10px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Automático</span>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+              <div class="flex justify-between items-center text-slate-600">
+                <span>Total Serviços:</span>
+                <span class="font-semibold text-slate-900" id="resumoServicos">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center text-slate-600">
+                <span>Total Plano de corte:</span>
+                <span class="font-semibold text-purple-700" id="resumoProdutos">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center text-slate-500 border-t border-slate-100 pt-2.5">
+                <span>Subtotal:</span>
+                <span class="font-medium" id="resumoSubtotal">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center border-t border-slate-100 pt-2.5">
+                <span class="text-slate-600 font-medium">Desconto Geral (R$):</span>
+                <input type="number" id="inputDesconto" placeholder="0.00" min="0" step="0.01" oninput="calcularTotaisGerais()" class="w-24 text-right bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-900">
+              </div>
+
+              <div class="flex justify-between items-center border-t-2 border-slate-200 pt-3 text-sm font-extrabold text-slate-900">
+                <span>VALOR TOTAL:</span>
+                <span class="text-xl text-emerald-600 font-black" id="resumoTotalFinal">R$ 0,00</span>
+              </div>
+            </div>
+
+            <div class="mt-6 space-y-2">
+              <button onclick="fecharPedido()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center uppercase tracking-wider">
+                <i class="fa-solid fa-file-pdf mr-2 text-base"></i> Fechar Pedido (Gera PDF)
+              </button>
+              <button onclick="imprimirOrcamento()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl transition shadow-sm flex items-center justify-center">
+                <i class="fa-solid fa-print mr-2 text-sm"></i> Imprimir Proposta
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ÁREA DE IMPRESSÃO VIA NAVEGADOR -->
+  <div id="areaImpressao" class="print-only p-8 bg-white text-black font-sans">
+    <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+      <div>
+        <h1 id="impEmpresaNome" style="font-size: 20px; font-weight: bold; text-transform: uppercase;">Sua Empresa</h1>
+        <p id="impEmpresaDoc" style="font-size: 11px;">CNPJ/CPF: -</p>
+        <p id="impEmpresaTel" style="font-size: 11px;">Contato: -</p>
+      </div>
+      <div style="text-align: right;">
+        <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase;">ORÇAMENTO COMERCIAL</h2>
+        <p style="font-size: 11px;">Data: <strong id="impDataOrcamento">-</strong></p>
+        <p style="font-size: 11px;">Validade: <strong id="impValidadeOrcamento">-</strong></p>
+      </div>
+    </div>
+
+    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
+      <p style="font-weight: bold; margin-bottom: 4px;">DADOS DO CLIENTE</p>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Cliente: <strong id="impClienteNome">-</strong></span>
+        <span>Telefone: <strong id="impClienteTel">-</strong></span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 8px;">ITENS DO ORÇAMENTO</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: left;">
+        <thead>
+          <tr style="background-color: #0f172a; color: #fff;">
+            <th style="padding: 6px; border: 1px solid #000;">#</th>
+            <th style="padding: 6px; border: 1px solid #000;">Descrição / Material</th>
+            <th style="padding: 6px; border: 1px solid #000;">Serviços Executados</th>
+            <th style="padding: 6px; border: 1px solid #000; text-align: right;">Corte (R$)</th>
+            <th style="padding: 6px; border: 1px solid #000; text-align: right;">Serviços (R$)</th>
+            <th style="padding: 6px; border: 1px solid #000; text-align: right;">Total Item</th>
+          </tr>
+        </thead>
+        <tbody id="impTabelaItens">
+          <!-- JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end;">
+      <div style="width: 250px; border: 1px solid #000; padding: 10px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>Total Serviços:</span>
+          <strong id="impTotalServicos">R$ 0,00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>Total Plano de Corte:</span>
+          <strong id="impTotalProdutos">R$ 0,00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #dc2626;">
+          <span>Desconto:</span>
+          <strong id="impDesconto">R$ 0,00</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-top: 1px solid #000; padding-top: 6px; font-size: 13px; font-weight: bold;">
+          <span>VALOR TOTAL:</span>
+          <strong id="impTotalFinal" style="color: #16a34a;">R$ 0,00</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PEDIDO FECHADO -->
+  <div id="modalPedidoFechado" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden">
+      <div class="bg-emerald-600 text-white p-5 text-center relative">
+        <button onclick="fecharModalPedido()" class="absolute top-4 right-4 text-emerald-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="w-14 h-14 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 text-2xl shadow-md">
+          <i class="fa-solid fa-file-pdf"></i>
+        </div>
+        <h3 class="text-xl font-extrabold">Pedido Fechado e Salvo!</h3>
+        <p class="text-xs text-emerald-100 mt-1">O PDF foi gerado e o pedido foi salvo no seu Histórico</p>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+          <div class="flex justify-between border-b border-slate-200 pb-2">
+            <span class="text-slate-500 font-semibold">Cliente:</span>
+            <strong id="modalResumoCliente" class="text-slate-900 font-bold">-</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-200 pb-2">
+            <span class="text-slate-500 font-semibold">Total de Itens:</span>
+            <strong id="modalResumoQtdItens" class="text-slate-900 font-bold">0 itens</strong>
+          </div>
+          <div class="flex justify-between pt-1 text-sm">
+            <span class="text-slate-700 font-bold">Valor Total do Pedido:</span>
+            <strong id="modalResumoValorTotal" class="text-emerald-600 font-black text-base">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-center font-semibold text-slate-700 mb-2.5">Opções do pedido:</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <button onclick="enviarWhatsApp()" class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-brands fa-whatsapp text-lg"></i>
+              <span class="text-[11px]">Enviar WhatsApp</span>
+            </button>
+            <button onclick="gerarPDFProposta()" class="py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-download text-lg"></i>
+              <span class="text-[11px]">Baixar PDF Novamente</span>
+            </button>
+            <button onclick="enviarEmail()" class="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-envelope text-lg"></i>
+              <span class="text-[11px]">Enviar E-mail</span>
+            </button>
+            <button onclick="imprimirOrcamento()" class="py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-print text-lg"></i>
+              <span class="text-[11px]">Imprimir</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+        <button onclick="abrirModalHistorico()" class="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center">
+          <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Ver Histórico
+        </button>
+        <button onclick="fecharModalPedido()" class="text-xs text-slate-600 hover:text-slate-900 font-semibold underline">
+          Voltar à Tela Principal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HISTÓRICO DE ORÇAMENTOS -->
+  <div id="modalHistorico" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="bg-slate-800 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Histórico de Orçamentos Salvos</h3>
+            <p class="text-xs text-slate-300">Acesse todos os orçamentos finalizados anteriormente</p>
+          </div>
+        </div>
+        <button onclick="fecharModalHistorico()" class="text-slate-300 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 shrink-0">
+        <div class="relative flex-1 min-w-[220px]">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="inputBuscaHistorico" oninput="renderizarListaHistorico()" placeholder="Buscar por cliente ou telefone..." class="w-full bg-white border border-slate-300 text-xs rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <button onclick="limparTodoHistorico()" class="text-xs text-rose-600 hover:text-rose-800 font-semibold px-3 py-2 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition">
+          <i class="fa-solid fa-trash-can mr-1"></i> Limpar Todo o Histórico
+        </button>
+      </div>
+
+      <div class="overflow-y-auto p-4 space-y-3 flex-1" id="listaHistoricoOrcamentos">
+        <!-- JS Populates -->
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalHistorico()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Serviços -->
+  <div id="modalServicos" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+            <i class="fa-solid fa-screwdriver-wrench text-xs"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-sm">Gerenciar Catálogo de Serviços</h3>
+        </div>
+        <button onclick="fecharModalServicos()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-4 bg-blue-50/40 border-b border-slate-200 space-y-3">
+        <input type="hidden" id="editServicoId" value="">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nome do Serviço</label>
+          <input type="text" id="inputNomeServico" placeholder="Ex: Mão de Obra de Instalação" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600 mb-1">Valor Padrão (R$)</label>
+          <input type="number" id="inputValorServico" min="0" step="0.01" placeholder="0.00" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="flex justify-end space-x-2 pt-1">
+          <button type="button" onclick="limparFormServico()" id="btnCancelarEdit" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+            Cancelar
+          </button>
+          <button type="button" onclick="salvarServicoCatalogo()" id="btnSalvarServico" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition shadow-sm flex items-center">
+            <i class="fa-solid fa-plus mr-1.5"></i> Salvar e Adicionar
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4">
+        <h4 class="text-xs font-semibold text-slate-500 mb-2">Serviços Cadastrados:</h4>
+        <div class="max-h-52 overflow-y-auto space-y-2 pr-1" id="listaCatalogoServicos">
+          <!-- JS -->
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+        <button onclick="fecharModalServicos()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">
+          Concluído
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Materiais -->
+  <div id="modalCatalogoMateriais" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-layer-group text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Gerenciar Catálogo de Materiais</h3>
+            <p class="text-[11px] text-slate-500">Cadastre chapas com cálculo preciso por área (m²)</p>
+          </div>
+        </div>
+        <button onclick="fecharModalCatalogoMateriais()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto p-4 space-y-5 flex-1">
+        <div class="bg-purple-50/60 p-4 rounded-xl border border-purple-200 space-y-3.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-purple-900 flex items-center">
+              <i class="fa-solid fa-circle-plus mr-1.5 text-purple-600"></i> Cadastrar / Editar Material
+            </h4>
+            <span class="text-[10px] text-purple-800 bg-purple-100 font-bold px-2.5 py-0.5 rounded-full border border-purple-200">
+              Custo m² = Valor Chapa ÷ Área Total Chapa
+            </span>
+          </div>
+
+          <input type="hidden" id="editMatCatId" value="">
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-700 mb-1">Nome do Material *</label>
+              <input type="text" id="matCatNome" placeholder="Ex: MDF Branco TX" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none font-medium">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-700 mb-1">Espessura (opcional)</label>
+              <input type="text" id="matCatEspessura" placeholder="Ex: 15mm" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- DIMENSÕES DA CHAPA E ÁREA TOTAL -->
+          <div class="bg-white p-3.5 rounded-xl border border-purple-200/80 shadow-sm space-y-2">
+            <div class="flex items-center justify-between border-b border-purple-100 pb-2">
+              <span class="text-xs font-bold text-purple-950 flex items-center">
+                <i class="fa-solid fa-ruler-combined text-purple-600 mr-1.5"></i> Dimensões e Área da Chapa
+              </span>
+              <div class="text-xs bg-purple-100 text-purple-950 font-black px-3 py-1 rounded-lg border border-purple-300 flex items-center">
+                <span class="text-[10px] text-purple-800 font-medium mr-1.5">Tamanho Total da Chapa:</span>
+                <span id="displayAreaTotalChapaModal" class="text-xs font-black">0,00 m²</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">Largura da Chapa (m)</label>
+                <input type="number" id="matCatChapaLargura" min="0" step="0.01" placeholder="Ex: 1.84" oninput="calcularValoresModalMaterial()" class="w-full bg-slate-50 border border-slate-300 text-xs font-bold text-slate-800 text-center rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-700 mb-1">Comprimento da Chapa (m)</label>
+                <input type="number" id="matCatChapaComprimento" min="0" step="0.01" placeholder="Ex: 2.75" oninput="calcularValoresModalMaterial()" class="w-full bg-slate-50 border border-slate-300 text-xs font-bold text-slate-800 text-center rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <!-- VALORES E MARGEM -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-700 mb-1">Valor Chapa (R$)</label>
+              <input type="number" id="matCatCustoChapa" min="0" step="0.01" placeholder="250.00" oninput="calcularValoresModalMaterial()" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none font-bold text-slate-900">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-700 mb-1">Custo m² (R$)</label>
+              <input type="number" id="matCatCustoM2" min="0" step="0.01" placeholder="0.00" oninput="calcularValoresModalMaterial()" class="w-full bg-slate-100 border border-purple-200 text-xs rounded-xl px-2.5 py-2 font-bold text-purple-900 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-slate-700 mb-1">% Sobra / Margem</label>
+              <input type="number" id="matCatSobra" min="0" step="1" placeholder="Ex: 10" oninput="calcularValoresModalMaterial()" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none text-center font-bold">
+            </div>
+            <div>
+              <label class="block text-[10px] font-semibold text-purple-900 mb-1">Venda m² (R$)</label>
+              <input type="number" id="matCatValorM2" min="0" step="0.01" placeholder="0.00" class="w-full bg-purple-100 border border-purple-300 text-xs rounded-xl px-2.5 py-2 font-black text-purple-950 focus:ring-2 focus:ring-purple-500 focus:outline-none text-right">
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 pt-1">
+            <button type="button" onclick="limparFormMaterialCatalogo()" id="btnCancelarEditMat" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+              Cancelar
+            </button>
+            <button type="button" onclick="salvarMaterialCatalogo()" id="btnSalvarMatCat" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-lg transition shadow-sm flex items-center">
+              <i class="fa-solid fa-plus mr-1.5"></i> Salvar Material
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-2">
+            <h4 class="text-xs font-bold text-slate-700">Materiais no Catálogo (<span id="countMateriais">0</span>):</h4>
+            <button onclick="restaurarMateriaisPadrao()" class="text-[11px] text-purple-700 hover:underline font-semibold">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Carregar Padrões
+            </button>
+          </div>
+          <div id="listaCatalogoMateriais" class="space-y-2">
+            <!-- JS Populates -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalCatalogoMateriais()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Concluído
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Configuração -->
+  <div id="modalEmpresa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <!-- Cabeçalho do Modal -->
+      <div class="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+            <i class="fa-solid fa-gear text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Configurações do Sistema</h3>
+            <p class="text-xs text-slate-300">Gerencie os dados da sua empresa e preferências</p>
+          </div>
+        </div>
+        <button onclick="fecharModalEmpresa()" class="text-slate-300 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Navegação por Locais de Configuração -->
+      <div class="bg-slate-100 p-2.5 border-b border-slate-200 flex items-center gap-2 overflow-x-auto shrink-0">
+        <button id="btnTabConfig_empresa" onclick="trocarAbaConfig('empresa')" class="tab-config-btn px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-2 bg-blue-600 text-white shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-building text-sm"></i>
+          <span>Minha Empresa</span>
+        </button>
+        <button id="btnTabConfig_usuarios" onclick="trocarAbaConfig('usuarios')" class="tab-config-btn px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-2 bg-slate-200 text-slate-700 hover:bg-slate-300 whitespace-nowrap">
+          <i class="fa-solid fa-user-gear text-sm"></i>
+          <span>Cadastro de Usuários</span>
+        </button>
+      </div>
+
+      <!-- Conteúdo dos Locais -->
+      <div class="p-5 overflow-y-auto space-y-4 flex-1">
+        <!-- LOCAL 1: MINHA EMPRESA -->
+        <div id="tabConfig_empresa" class="tab-config-content space-y-4">
+          <div class="bg-blue-50/60 border border-blue-100 p-3.5 rounded-xl flex items-center space-x-2.5">
+            <i class="fa-solid fa-circle-info text-blue-600 text-sm shrink-0"></i>
+            <p class="text-xs text-blue-950 font-medium">Estes dados serão utilizados no cabeçalho das propostas comerciais, impressões e arquivos PDF gerados.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 uppercase mb-1">Nome Fantasia / Razão Social *</label>
+              <input type="text" id="empresaNome" placeholder="Ex: EletroServ Soluções e Projetos" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">CNPJ ou CPF *</label>
+              <input type="text" id="empresaDoc" placeholder="Ex: 00.000.000/0001-00" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Telefone / WhatsApp *</label>
+              <input type="text" id="empresaTel" placeholder="Ex: (11) 98888-7777" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">E-mail Comercial</label>
+              <input type="email" id="empresaEmail" placeholder="Ex: contato@minhaempresa.com.br" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Chave Pix (Pagamento)</label>
+              <input type="text" id="empresaPix" placeholder="Ex: CNPJ / E-mail / Telefone" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 uppercase mb-1">Endereço Completo</label>
+              <input type="text" id="empresaEndereco" placeholder="Ex: Av. Paulista, 1000 - Bairro - Cidade/UF" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- LOCAL 2: CADASTRO DE USUÁRIOS E RECUPERAÇÃO DE SENHA POR EMAIL / SMS -->
+        <div id="tabConfig_usuarios" class="tab-config-content space-y-4 hidden">
+          <div class="bg-purple-50/60 border border-purple-100 p-3.5 rounded-xl flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5">
+              <i class="fa-solid fa-user-shield text-purple-600 text-sm shrink-0"></i>
+              <p class="text-xs text-purple-950 font-medium">Cadastre e gerencie usuários com E-mail e Telefone para recuperação de senha via SMS/E-mail.</p>
+            </div>
+            <button type="button" onclick="abrirModalRecuperarSenha()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition whitespace-nowrap flex items-center">
+              <i class="fa-solid fa-key mr-1.5"></i> Recuperar Senha
+            </button>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <h4 class="text-xs font-bold text-slate-800 uppercase flex items-center">
+              <i class="fa-solid fa-user-plus mr-1.5 text-blue-600"></i> Criar / Editar Usuário
+            </h4>
+            <input type="hidden" id="editUsuarioId" value="">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nome Completo *</label>
+                <input type="text" id="usrNome" placeholder="Ex: Maria Souza" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nome de Usuário (Login) *</label>
+                <input type="text" id="usrLogin" placeholder="Ex: maria" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">E-mail (Recuperação) *</label>
+                <input type="email" id="usrEmail" placeholder="maria@empresa.com" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Telefone / Celular (SMS) *</label>
+                <input type="text" id="usrTelefone" placeholder="(11) 99888-7766" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Senha *</label>
+                <input type="password" id="usrSenha" placeholder="••••••••" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Perfil / Cargo</label>
+                <select id="usrPerfil" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium">
+                  <option value="Administrador">Administrador</option>
+                  <option value="Operador">Operador / Vendedor</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-1">
+              <button type="button" onclick="limparFormUsuario()" id="btnCancelarEditUsr" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+                Cancelar
+              </button>
+              <button type="button" onclick="salvarUsuario()" id="btnSalvarUsr" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition shadow-sm flex items-center">
+                <i class="fa-solid fa-plus mr-1.5"></i> Salvar Usuário
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="text-xs font-bold text-slate-700 mb-2">Usuários Cadastrados (<span id="countUsuarios">0</span>):</h4>
+            <div id="listaUsuariosCadastrados" class="space-y-2">
+              <!-- JS Populates -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rodapé -->
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2 shrink-0">
+        <button onclick="fecharModalEmpresa()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">
+          Cancelar
+        </button>
+        <button onclick="salvarDadosEmpresa()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-600/20 flex items-center">
+          <i class="fa-solid fa-floppy-disk mr-1.5"></i> Salvar Configurações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RECUPERAÇÃO DE SENHA (SMS / E-MAIL) -->
+  <div id="modalRecuperarSenha" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-slate-900 text-white p-5 text-center relative">
+        <button onclick="fecharModalRecuperarSenha()" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl shadow-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="text-lg font-extrabold">Recuperação de Senha</h3>
+        <p class="text-xs text-slate-300 mt-0.5">Envio do código de verificação via SMS ou E-mail</p>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <!-- Passo 1: Informar E-mail ou Telefone -->
+        <div id="passoRecuperacao1" class="space-y-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Informe seu E-mail ou Telefone cadastrado:</label>
+            <input type="text" id="inputContatoRecuperacao" placeholder="Ex: maria@empresa.com ou (11) 99888-7766" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Canal de Envio:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="flex items-center p-2.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="canalEnvio" value="sms" checked class="text-blue-600 focus:ring-blue-500 mr-2">
+                <span class="font-bold text-slate-800"><i class="fa-solid fa-comment-sms text-emerald-600 mr-1"></i> SMS</span>
+              </label>
+              <label class="flex items-center p-2.5 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                <input type="radio" name="canalEnvio" value="email" class="text-blue-600 focus:ring-blue-500 mr-2">
+                <span class="font-bold text-slate-800"><i class="fa-solid fa-envelope text-blue-600 mr-1"></i> E-mail</span>
+              </label>
+            </div>
+          </div>
+
+          <button onclick="enviarCodigoRecuperacao()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center">
+            <i class="fa-solid fa-paper-plane mr-1.5"></i> Enviar Código de Verificação
+          </button>
+        </div>
+
+        <!-- Passo 2: Digitar Código de 6 dígitos -->
+        <div id="passoRecuperacao2" class="space-y-3 hidden">
+          <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-emerald-900 space-y-1">
+            <p class="font-bold flex items-center"><i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i> Código enviado com sucesso!</p>
+            <p class="text-[11px] text-emerald-700" id="msgDestinoCodigo">Foi enviado um código de 6 dígitos para o seu canal informado.</p>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Código de 6 dígitos (Simulação):</label>
+            <input type="text" id="inputCodigoSMS" maxlength="6" placeholder="Ex: 849201" class="w-full text-center tracking-widest text-lg bg-slate-50 border border-slate-300 font-extrabold rounded-xl px-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Nova Senha:</label>
+            <input type="password" id="inputNovaSenhaRecuperada" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <button onclick="validarCodigoERedefinirSenha()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center">
+            <i class="fa-solid fa-key mr-1.5"></i> Redefinir Senha
+          </button>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+        <button onclick="fecharModalRecuperarSenha()" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center space-x-2.5 pointer-events-none">
+    <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+    <span id="toastMsg">Operação realizada com sucesso!</span>
+  </div>
+
+  <script>
+    const materiaisPadrao = [
+      { id: 'matcat_1', nome: 'MDF Branco TX', espessura: '15mm', chapaLargura: 1.84, chapaComprimento: 2.75, tamanhoChapa: '2,75 x 1,84m', custoChapa: 250.00, custoM2: 49.41, sobra: null, valorM2: 54.35 },
+      { id: 'matcat_2', nome: 'Chapa Aço 1020', espessura: '3mm', chapaLargura: 1.00, chapaComprimento: 2.00, tamanhoChapa: '2,00 x 1,00m', custoChapa: 420.00, custoM2: 210.00, sobra: null, valorM2: 241.50 },
+      { id: 'matcat_3', nome: 'Acrílico Cristal', espessura: '5mm', chapaLargura: 1.00, chapaComprimento: 2.00, tamanhoChapa: '2,00 x 1,00m', custoChapa: 600.00, custoM2: 300.00, sobra: null, valorM2: 315.00 }
+    ];
+
+    let catalogoMateriais = JSON.parse(localStorage.getItem('orca_catalogo_materiais')) || [...materiaisPadrao];
+
+    let catalogoServicos = JSON.parse(localStorage.getItem('orca_catalogo_servicos')) || [
+      { id: 'serv_1', nome: 'Mão de Obra de Corte e Dobra', valor: 150.00 },
+      { id: 'serv_2', nome: 'Acabamento e Lixamento', valor: 80.00 },
+      { id: 'serv_3', nome: 'Entrega e Transporte', valor: 50.00 }
+    ];
+
+    let dadosEmpresa = JSON.parse(localStorage.getItem('orca_dados_empresa')) || {
+      nome: 'EletroServ Soluções',
+      documento: '12.345.678/0001-90',
+      telefone: '(11) 98765-4321',
+      email: 'contato@eletroserv.com.br',
+      endereco: 'Rua Principal, 100 - Centro',
+      pix: '12.345.678/0001-90'
+    };
+
+    let listaUsuarios = JSON.parse(localStorage.getItem('orca_usuarios')) || [
+      { id: 'usr_admin', nome: 'Administrador Principal', login: 'admin', email: 'admin@empresa.com', telefone: '(11) 99888-7766', senha: '123', perfil: 'Administrador' }
+    ];
+
+    let historicoOrcamentos = JSON.parse(localStorage.getItem('orca_historico_orcamentos')) || [];
+
+    let tempServicosItem = {};
+    let itensOrcamento = [];
+    let ultimoPedidoFechado = null;
+    let codigoRecuperacaoGerado = null;
+    let usuarioRecuperacaoAtivo = null;
+
+    function formatarMoeda(valor) {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
+    }
+
+    function mostrarToast(mensagem) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      if (!toast || !toastMsg) return;
+      toastMsg.innerText = mensagem;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    /* AUTENTICAÇÃO E SESSÃO */
+    function verificarSessao() {
+      const usuarioSessao = localStorage.getItem('orca_sessao_ativa') || sessionStorage.getItem('orca_sessao_ativa');
+      if (usuarioSessao) {
+        document.getElementById('telaLogin').classList.add('hidden');
+        document.getElementById('appContent').classList.remove('hidden');
+      } else {
+        document.getElementById('telaLogin').classList.remove('hidden');
+        document.getElementById('appContent').classList.add('hidden');
+      }
+    }
+
+    function realizarLogin(e) {
+      e.preventDefault();
+      const login = document.getElementById('loginUsuario').value.trim();
+      const senha = document.getElementById('loginSenha').value.trim();
+      const lembrar = document.getElementById('lembrarSessao').checked;
+
+      const usuarioValido = listaUsuarios.find(u => u.login.toLowerCase() === login.toLowerCase() && u.senha === senha);
+
+      if (usuarioValido) {
+        if (lembrar) {
+          localStorage.setItem('orca_sessao_ativa', JSON.stringify(usuarioValido));
+        } else {
+          sessionStorage.setItem('orca_sessao_ativa', JSON.stringify(usuarioValido));
+        }
+
+        document.getElementById('loginUsuario').value = '';
+        document.getElementById('loginSenha').value = '';
+        verificarSessao();
+        mostrarToast(`Bem-vindo, ${usuarioValido.nome}!`);
+      } else {
+        mostrarToast('⚠️ Usuário ou senha incorretos!');
+      }
+    }
+
+    function realizarLogout() {
+      localStorage.removeItem('orca_sessao_ativa');
+      sessionStorage.removeItem('orca_sessao_ativa');
+      verificarSessao();
+      mostrarToast('Sessão encerrada com sucesso.');
+    }
+
+    function renderizarCheckpointsUnificados() {
+      const container = document.getElementById('painelCheckpointsServicos');
+      if (!container) return;
+
+      if (!catalogoServicos || catalogoServicos.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic">Nenhum serviço cadastrado.</p>`;
+        return;
+      }
+
+      container.innerHTML = catalogoServicos.map(s => {
+        const estado = tempServicosItem[s.id] || { selecionado: false, quantidade: 1, valorUnitario: s.valor };
+        const isChecked = estado.selecionado;
+
+        return `
+          <div class="flex flex-wrap items-center justify-between p-2.5 rounded-xl border transition ${isChecked ? 'bg-blue-100/70 border-blue-300' : 'bg-white border-slate-200'} gap-2 text-xs">
+            <div class="flex items-center space-x-2.5 flex-1 min-w-[180px]">
+              <input type="checkbox" id="chk_u_${s.id}" ${isChecked ? 'checked' : ''} 
+                onchange="toggleServicoUnificado('${s.id}', this.checked)"
+                class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+              <label for="chk_u_${s.id}" class="font-semibold cursor-pointer ${isChecked ? 'text-blue-900' : 'text-slate-700'}">
+                ${s.nome}
+              </label>
+            </div>
+
+            <div class="flex items-center space-x-2 ${isChecked ? 'opacity-100' : 'opacity-40 pointer-events-none'}">
+              <div class="flex items-center space-x-1">
+                <span class="text-[10px] text-slate-500 font-semibold">Valor (R$):</span>
+                <input type="number" min="0" step="0.01" value="${estado.valorUnitario}" 
+                  oninput="atualizarValorServicoUnificado('${s.id}', this.value)"
+                  class="w-24 text-right bg-white border border-slate-300 text-xs rounded-lg py-1 px-2 font-semibold">
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      atualizarCalculoPreviewUnificado();
+    }
+
+    function toggleServicoUnificado(id, checked) {
+      const cat = catalogoServicos.find(s => s.id === id);
+      if (!tempServicosItem[id]) {
+        tempServicosItem[id] = { selecionado: checked, quantidade: 1, valorUnitario: cat ? cat.valor : 0 };
+      } else {
+        tempServicosItem[id].selecionado = checked;
+      }
+      renderizarCheckpointsUnificados();
+    }
+
+    function atualizarValorServicoUnificado(id, val) {
+      if (tempServicosItem[id]) {
+        tempServicosItem[id].valorUnitario = Math.max(0, Number(val) || 0);
+        atualizarCalculoPreviewUnificado();
+      }
+    }
+
+    function popularSelectMateriaisFixos() {
+      const select = document.getElementById('fixoMaterialId');
+      if (!select) return;
+
+      if (!catalogoMateriais || catalogoMateriais.length === 0) {
+        select.innerHTML = `<option value="">Nenhum material cadastrado</option>`;
+        return;
+      }
+
+      select.innerHTML = catalogoMateriais.map(m => `
+        <option value="${m.id}">
+          ${m.nome} ${m.espessura ? `(${m.espessura})` : ''} - ${formatarMoeda(m.valorM2)}/m²
+        </option>
+      `).join('');
+
+      if (!document.getElementById('editItemId').value && catalogoMateriais.length > 0) {
+        aoSelecionarMaterialFixo(catalogoMateriais[0].id);
+      }
+    }
+
+    function aoSelecionarMaterialFixo(matId) {
+      const mat = catalogoMateriais.find(m => m.id === matId);
+      if (mat) {
+        const inputM2 = document.getElementById('fixoValorM2');
+        if (inputM2) inputM2.value = (mat.valorM2 || 0).toFixed(2);
+      }
+      atualizarCalculoPreviewUnificado();
+    }
+
+    function atualizarCalculoPreviewUnificado() {
+      let subtotalServicos = 0;
+      Object.keys(tempServicosItem).forEach(id => {
+        const s = tempServicosItem[id];
+        if (s.selecionado) {
+          subtotalServicos += (s.quantidade || 1) * s.valorUnitario;
+        }
+      });
+
+      const largura = Number(document.getElementById('fixoLargura')?.value) || 0;
+      const comprimento = Number(document.getElementById('fixoComprimento')?.value) || 0;
+      const valorM2 = Number(document.getElementById('fixoValorM2')?.value) || 0;
+      const tempoServicoHora = Number(document.getElementById('fixoTempoServicoHora')?.value) || 0;
+      const tempoCorteMin = Number(document.getElementById('fixoTempoCorteMin')?.value) || 0;
+
+      const totalArea = largura * comprimento;
+      
+      const displayArea = document.getElementById('displayAreaCalculada');
+      if (displayArea) {
+        displayArea.innerText = `${largura.toFixed(2)}m x ${comprimento.toFixed(2)}m = ${totalArea.toFixed(2)} m²`;
+      }
+
+      const custoMat = totalArea * valorM2;
+      const valorMinuto = tempoServicoHora / 60;
+
+      const displayMinuto = document.getElementById('displayMinutoVal');
+      if (displayMinuto) {
+        displayMinuto.innerText = `${formatarMoeda(valorMinuto)} / min`;
+      }
+
+      const custoCorte = valorMinuto * tempoCorteMin;
+
+      const displayCustoCorte = document.getElementById('displayCustoCorteVal');
+      if (displayCustoCorte) {
+        displayCustoCorte.innerText = `Total Corte: ${formatarMoeda(custoCorte)}`;
+      }
+
+      const subtotalCorte = custoMat + custoCorte;
+      const totalItem = subtotalServicos + subtotalCorte;
+
+      const elSubServ = document.getElementById('prevSubServicos');
+      const elSubCorte = document.getElementById('prevSubCorte');
+      const elTotItem = document.getElementById('prevTotalItem');
+
+      if (elSubServ) elSubServ.innerText = formatarMoeda(subtotalServicos);
+      if (elSubCorte) elSubCorte.innerText = formatarMoeda(subtotalCorte);
+      if (elTotItem) elTotItem.innerText = formatarMoeda(totalItem);
+
+      return { subtotalServicos, areaUnit: totalArea, totalArea, custoMat, valorMinuto, custoCorte, subtotalCorte, totalItem };
+    }
+
+    function adicionarItemAoOrcamento() {
+      const editId = document.getElementById('editItemId').value;
+      const descInput = document.getElementById('fixoDescricao');
+      const descricao = descInput ? descInput.value.trim() : '';
+
+      if (!descricao) {
+        if (descInput) {
+          descInput.classList.add('border-rose-500', 'ring-2', 'ring-rose-500');
+          descInput.focus();
+        }
+        mostrarToast('⚠️ O campo "Descrição do Orçamento / Item" é obrigatório!');
+        return;
+      } else if (descInput) {
+        descInput.classList.remove('border-rose-500', 'ring-2', 'ring-rose-500');
+      }
+
+      const matId = document.getElementById('fixoMaterialId').value;
+      const mat = catalogoMateriais.find(m => m.id === matId);
+      const nomeMaterial = mat ? (mat.nome + (mat.espessura ? ` (${mat.espessura})` : '')) : 'Material Personalizado';
+
+      const largura = Number(document.getElementById('fixoLargura').value) || 0;
+      const comprimento = Number(document.getElementById('fixoComprimento').value) || 0;
+      const valorM2 = Number(document.getElementById('fixoValorM2').value) || 0;
+      const tempoServicoHora = Number(document.getElementById('fixoTempoServicoHora').value) || 0;
+      const tempoCorteMin = Number(document.getElementById('fixoTempoCorteMin').value) || 0;
+
+      const servicosDoItem = [];
+      Object.keys(tempServicosItem).forEach(id => {
+        const s = tempServicosItem[id];
+        if (s.selecionado) {
+          const cat = catalogoServicos.find(c => c.id === id);
+          servicosDoItem.push({
+            idServico: id,
+            nome: cat ? cat.nome : 'Serviço',
+            quantidade: 1,
+            valorUnitario: s.valorUnitario
+          });
+        }
+      });
+
+      if (editId) {
+        const item = itensOrcamento.find(i => i.id === editId);
+        if (item) {
+          item.descricao = descricao;
+          item.materialId = matId;
+          item.nomeMaterial = nomeMaterial;
+          item.largura = largura;
+          item.comprimento = comprimento;
+          item.valorM2 = valorM2;
+          item.tempoServicoHora = tempoServicoHora;
+          item.tempoCorteMin = tempoCorteMin;
+          item.servicos = servicosDoItem;
+        }
+        limparCamposUnificados();
+        mostrarToast('Item atualizado no pedido!');
+      } else {
+        const novoItem = {
+          id: 'item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          selecionado: true,
+          descricao: descricao,
+          materialId: matId,
+          nomeMaterial: nomeMaterial,
+          largura,
+          comprimento,
+          valorM2,
+          tempoServicoHora,
+          tempoCorteMin,
+          servicos: servicosDoItem
+        };
+        itensOrcamento.push(novoItem);
+        limparCamposUnificados();
+        mostrarToast('Item adicionado à Lista do Pedido!');
+      }
+
+      renderizarListaItensOrcamento();
+      calcularTotaisGerais();
+    }
+
+    function toggleSelecaoItemOrcamento(id, checked) {
+      const item = itensOrcamento.find(i => i.id === id);
+      if (item) {
+        item.selecionado = checked;
+        renderizarListaItensOrcamento();
+        calcularTotaisGerais();
+      }
+    }
+
+    function editarItemOrcamento(id) {
+      const item = itensOrcamento.find(i => i.id === id);
+      if (!item) return;
+
+      document.getElementById('editItemId').value = item.id;
+      document.getElementById('fixoDescricao').value = item.descricao || '';
+      document.getElementById('fixoMaterialId').value = item.materialId || '';
+      document.getElementById('fixoLargura').value = item.largura;
+      document.getElementById('fixoComprimento').value = item.comprimento;
+      document.getElementById('fixoValorM2').value = (item.valorM2 || 0).toFixed(2);
+      document.getElementById('fixoTempoServicoHora').value = item.tempoServicoHora;
+      document.getElementById('fixoTempoCorteMin').value = item.tempoCorteMin;
+
+      tempServicosItem = {};
+      catalogoServicos.forEach(s => {
+        const noItem = item.servicos.find(sv => sv.idServico === s.id);
+        if (noItem) {
+          tempServicosItem[s.id] = { selecionado: true, quantidade: 1, valorUnitario: noItem.valorUnitario };
+        } else {
+          tempServicosItem[s.id] = { selecionado: false, quantidade: 1, valorUnitario: s.valor };
+        }
+      });
+
+      renderizarCheckpointsUnificados();
+
+      document.getElementById('btnCancelarEditUnificado').classList.remove('hidden');
+      document.getElementById('btnAdicionarUnificado').innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Atualizar Item`;
+
+      const painel = document.getElementById('painelUnificado');
+      if (painel) painel.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelarEdicaoUnificada() {
+      limparCamposUnificados();
+    }
+
+    function limparCamposUnificados() {
+      document.getElementById('editItemId').value = '';
+      document.getElementById('fixoDescricao').value = '';
+      tempServicosItem = {};
+      renderizarCheckpointsUnificados();
+
+      document.getElementById('fixoLargura').value = '';
+      document.getElementById('fixoComprimento').value = '';
+      document.getElementById('fixoTempoCorteMin').value = '';
+
+      if (catalogoMateriais && catalogoMateriais.length > 0) {
+        const matId = document.getElementById('fixoMaterialId').value || catalogoMateriais[0].id;
+        aoSelecionarMaterialFixo(matId);
+      }
+
+      document.getElementById('btnCancelarEditUnificado').classList.add('hidden');
+      document.getElementById('btnAdicionarUnificado').innerHTML = `<i class="fa-solid fa-plus-circle mr-1.5"></i> Adicionar ao Orçamento`;
+      atualizarCalculoPreviewUnificado();
+    }
+
+    function removerItemOrcamento(id) {
+      itensOrcamento = itensOrcamento.filter(i => i.id !== id);
+      if (document.getElementById('editItemId').value === id) {
+        cancelarEdicaoUnificada();
+      }
+      renderizarListaItensOrcamento();
+      calcularTotaisGerais();
+      mostrarToast('Item removido do pedido.');
+    }
+
+    function renderizarListaItensOrcamento() {
+      const container = document.getElementById('listaItensOrcamento');
+      const containerContagem = document.getElementById('contagemSelecaoItens');
+      if (!container) return;
+
+      const nomeCliente = document.getElementById('clienteNome')?.value.trim() || 'Cliente Não Informado';
+      const telCliente = document.getElementById('clienteTelefone')?.value.trim() || '';
+
+      const selecionadosCount = itensOrcamento.filter(i => i.selecionado !== false).length;
+      if (containerContagem) {
+        containerContagem.innerText = `${selecionadosCount} de ${itensOrcamento.length} selecionados`;
+      }
+
+      const headerClienteHTML = `
+        <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-3.5 rounded-xl shadow-sm flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-bold">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-blue-300 tracking-wider">Cliente do Orçamento</span>
+              <h4 class="text-sm font-extrabold text-white leading-tight">
+                ${nomeCliente}
+              </h4>
+            </div>
+          </div>
+          ${telCliente ? `
+            <div class="text-xs text-slate-300 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700">
+              <i class="fa-solid fa-phone text-emerald-400 mr-1.5"></i>${telCliente}
+            </div>
+          ` : ''}
+        </div>
+      `;
+
+      if (itensOrcamento.length === 0) {
+        container.innerHTML = headerClienteHTML + `
+          <div class="text-center py-8 bg-slate-50 border border-dashed border-slate-300 rounded-xl p-4">
+            <p class="text-xs text-slate-500 font-medium">Nenhum pedido/item adicionado para este cliente ainda.</p>
+            <p class="text-[10px] text-slate-400 mt-0.5">Configure os serviços e o plano de corte acima e clique em "Adicionar ao Orçamento".</p>
+          </div>`;
+        return;
+      }
+
+      const cardsItens = itensOrcamento.map((item, idx) => {
+        const isSelected = item.selecionado !== false;
+        const totalArea = item.largura * item.comprimento;
+        const valorChapa = totalArea * item.valorM2;
+        const valorMinuto = item.tempoServicoHora / 60;
+        const custoCorte = valorMinuto * item.tempoCorteMin;
+        const subtotalCorte = valorChapa + custoCorte;
+
+        let subtotalServicos = 0;
+        item.servicos.forEach(s => {
+          subtotalServicos += s.valorUnitario;
+        });
+
+        const totalItem = subtotalCorte + subtotalServicos;
+
+        return `
+          <div class="border p-4 rounded-xl shadow-sm text-xs space-y-2.5 transition-all ${isSelected ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'}">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
+              <div class="flex items-center space-x-2.5">
+                <input type="checkbox" id="chk_item_${item.id}" ${isSelected ? 'checked' : ''}
+                  onchange="toggleSelecaoItemOrcamento('${item.id}', this.checked)"
+                  class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer">
+                <span class="w-6 h-6 ${isSelected ? 'bg-slate-800 text-white' : 'bg-slate-300 text-slate-700'} font-bold rounded-lg flex items-center justify-center text-xs">#${idx + 1}</span>
+                <div class="flex flex-col">
+                  ${item.descricao ? `<span class="font-extrabold text-blue-900 text-sm">${item.descricao}</span>` : ''}
+                  <span class="font-bold text-slate-700 ${item.descricao ? 'text-xs' : 'text-sm'}">${item.nomeMaterial}</span>
+                </div>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <button type="button" onclick="editarItemOrcamento('${item.id}')" class="px-3 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 font-semibold rounded-lg text-xs transition flex items-center">
+                  <i class="fa-solid fa-pen-to-square mr-1"></i> Editar
+                </button>
+                <button type="button" onclick="removerItemOrcamento('${item.id}')" class="px-3 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold rounded-lg text-xs transition flex items-center">
+                  <i class="fa-solid fa-trash mr-1"></i> Excluir
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-[11px]">
+              <div>
+                <p class="font-bold text-purple-900 mb-1 flex items-center"><i class="fa-solid fa-layer-group mr-1"></i> Plano de corte:</p>
+                <ul class="text-slate-600 space-y-0.5">
+                  <li>Medidas: <strong>${item.largura} x ${item.comprimento}m = ${totalArea.toFixed(2)} m²</strong></li>
+                  <li>Valor Material: <strong>${formatarMoeda(valorChapa)}</strong></li>
+                  <li>Corte: <strong>${item.tempoCorteMin} min (${formatarMoeda(valorMinuto)}/min) = ${formatarMoeda(custoCorte)}</strong></li>
+                  <li class="font-bold text-purple-700">Subtotal Corte: ${formatarMoeda(subtotalCorte)}</li>
+                </ul>
+              </div>
+
+              <div>
+                <p class="font-bold text-blue-900 mb-1 flex items-center"><i class="fa-solid fa-list-check mr-1"></i> Serviços Prestados:</p>
+                ${item.servicos.length > 0 ? `
+                  <ul class="text-slate-600 space-y-0.5">
+                    ${item.servicos.map(s => `<li>• ${s.nome} - ${formatarMoeda(s.valorUnitario)}</li>`).join('')}
+                    <li class="font-bold text-blue-700 pt-0.5">Subtotal Serviços: ${formatarMoeda(subtotalServicos)}</li>
+                  </ul>
+                ` : `<p class="text-slate-400 italic">Nenhum serviço associado a este item.</p>`}
+              </div>
+            </div>
+
+            <div class="flex justify-end items-center pt-1 text-xs">
+              <span class="font-bold text-slate-700 mr-2">VALOR TOTAL DO ITEM:</span>
+              <span class="font-black ${isSelected ? 'text-emerald-600' : 'text-slate-400'} text-base">${formatarMoeda(totalItem)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = headerClienteHTML + `<div class="space-y-3">${cardsItens}</div>`;
+    }
+
+    function calcularTotaisGerais() {
+      let totalServicosGeral = 0;
+      let totalProdutosGeral = 0;
+
+      const itensSelecionados = itensOrcamento.filter(i => i.selecionado !== false);
+
+      itensSelecionados.forEach(item => {
+        item.servicos.forEach(s => {
+          totalServicosGeral += s.valorUnitario;
+        });
+
+        const totalArea = item.largura * item.comprimento;
+        const valorChapa = totalArea * item.valorM2;
+        const valorMinuto = item.tempoServicoHora / 60;
+        const custoCorte = valorMinuto * item.tempoCorteMin;
+        totalProdutosGeral += (valorChapa + custoCorte);
+      });
+
+      const descontoGeral = Number(document.getElementById('inputDesconto')?.value) || 0;
+      const subtotalGeral = totalServicosGeral + totalProdutosGeral;
+      const totalFinal = Math.max(0, subtotalGeral - descontoGeral);
+
+      const elResServ = document.getElementById('resumoServicos');
+      const elResProd = document.getElementById('resumoProdutos');
+      const elResSub = document.getElementById('resumoSubtotal');
+      const elResTot = document.getElementById('resumoTotalFinal');
+
+      if (elResServ) elResServ.innerText = formatarMoeda(totalServicosGeral);
+      if (elResProd) elResProd.innerText = formatarMoeda(totalProdutosGeral);
+      if (elResSub) elResSub.innerText = formatarMoeda(subtotalGeral);
+      if (elResTot) elResTot.innerText = formatarMoeda(totalFinal);
+
+      return { totalServicosGeral, totalProdutosGeral, descontoGeral, totalFinal };
+    }
+
+    function fecharPedido() {
+      const itensSelecionados = itensOrcamento.filter(i => i.selecionado !== false);
+
+      if (itensSelecionados.length === 0) {
+        mostrarToast('Marque/Selecione pelo menos um item para fechar o pedido!');
+        return;
+      }
+
+      const cliente = document.getElementById('clienteNome').value.trim() || 'Cliente';
+      const clienteTel = document.getElementById('clienteTelefone').value.trim() || '';
+      const dataOrc = document.getElementById('dataOrcamento').value || '-';
+      const validadeOrc = document.getElementById('validadeOrcamento').value || '-';
+      const totais = calcularTotaisGerais();
+
+      const agora = new Date();
+      const dataHoraFechamento = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      ultimoPedidoFechado = {
+        id: 'hist_' + Date.now(),
+        dataFechamento: dataHoraFechamento,
+        cliente,
+        clienteTel,
+        dataOrc,
+        validadeOrc,
+        itens: JSON.parse(JSON.stringify(itensSelecionados)),
+        totais: { ...totais }
+      };
+
+      historicoOrcamentos.unshift(ultimoPedidoFechado);
+      localStorage.setItem('orca_historico_orcamentos', JSON.stringify(historicoOrcamentos));
+      atualizarContadorHistorico();
+
+      document.getElementById('modalResumoCliente').innerText = cliente;
+      document.getElementById('modalResumoQtdItens').innerText = `${itensSelecionados.length} ${itensSelecionados.length === 1 ? 'item' : 'itens'}`;
+      document.getElementById('modalResumoValorTotal').innerText = formatarMoeda(totais.totalFinal);
+
+      gerarPDFProposta();
+
+      document.getElementById('modalPedidoFechado').classList.remove('hidden');
+
+      limparTudo();
+      mostrarToast('Orçamento salvo no Histórico!');
+    }
+
+    function fecharModalPedido() {
+      document.getElementById('modalPedidoFechado').classList.add('hidden');
+    }
+
+    function abrirModalHistorico() {
+      renderizarListaHistorico();
+      document.getElementById('modalHistorico').classList.remove('hidden');
+    }
+
+    function fecharModalHistorico() {
+      document.getElementById('modalHistorico').classList.add('hidden');
+    }
+
+    function atualizarContadorHistorico() {
+      const el = document.getElementById('countHistoricoHeader');
+      if (el) el.innerText = historicoOrcamentos.length;
+    }
+
+    function renderizarListaHistorico() {
+      const container = document.getElementById('listaHistoricoOrcamentos');
+      const termoBusca = (document.getElementById('inputBuscaHistorico')?.value || '').toLowerCase().trim();
+
+      if (!container) return;
+
+      const listaFiltrada = historicoOrcamentos.filter(h => {
+        if (!termoBusca) return true;
+        return (h.cliente || '').toLowerCase().includes(termoBusca) || (h.clienteTel || '').toLowerCase().includes(termoBusca);
+      });
+
+      if (listaFiltrada.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10 bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-6">
+            <i class="fa-solid fa-folder-open text-slate-300 text-3xl mb-2"></i>
+            <p class="text-xs text-slate-500 font-semibold">Nenhum orçamento encontrado no histórico.</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Assim que fechar um pedido, ele aparecerá nesta lista automaticamente.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = listaFiltrada.map(h => `
+        <div class="bg-white border border-slate-200 p-4 rounded-xl shadow-sm text-xs space-y-3 hover:border-slate-300 transition">
+          <div class="flex flex-wrap justify-between items-center border-b border-slate-100 pb-2.5 gap-2">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-extrabold text-slate-900 text-sm">${h.cliente}</span>
+                <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Fechado</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                <i class="fa-solid fa-calendar-check mr-1 text-slate-400"></i> ${h.dataFechamento || 'Data N/I'} 
+                ${h.clienteTel ? ` | <i class="fa-solid fa-phone text-slate-400 ml-1"></i> ${h.clienteTel}` : ''}
+              </p>
+            </div>
+
+            <div class="text-right">
+              <span class="text-[10px] text-slate-400 font-medium block">Valor Total</span>
+              <span class="text-base font-black text-emerald-600">${formatarMoeda(h.totais ? h.totais.totalFinal : 0)}</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px]">
+            <p class="font-bold text-slate-700">Itens do Pedido (${h.itens ? h.itens.length : 0}):</p>
+            <ul class="text-slate-600 space-y-0.5 pl-2">
+              ${(h.itens || []).map(i => `<li>• ${i.descricao ? i.descricao + ' (' + i.nomeMaterial + ')' : i.nomeMaterial}</li>`).join('')}
+            </ul>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+            <button onclick="editarDoHistorico('${h.id}')" class="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold rounded-lg transition flex items-center text-[11px]">
+              <i class="fa-solid fa-pen-to-square mr-1 text-sm"></i> Editar
+            </button>
+            <button onclick="baixarPDFDoHistorico('${h.id}')" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold rounded-lg transition flex items-center text-[11px]">
+              <i class="fa-solid fa-file-pdf mr-1 text-sm"></i> Baixar PDF
+            </button>
+            <button onclick="enviarWhatsAppDoHistorico('${h.id}')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-lg transition flex items-center text-[11px]">
+              <i class="fa-brands fa-whatsapp mr-1 text-sm"></i> WhatsApp
+            </button>
+            <button onclick="excluirDoHistorico('${h.id}')" class="px-2.5 py-1.5 bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700 font-bold rounded-lg transition flex items-center text-[11px]">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function baixarPDFDoHistorico(id) {
+      const item = historicoOrcamentos.find(h => h.id === id);
+      if (item) {
+        ultimoPedidoFechado = item;
+        gerarPDFProposta();
+      }
+    }
+
+    function editarDoHistorico(id) {
+      const item = historicoOrcamentos.find(h => h.id === id);
+      if (!item) return;
+
+      document.getElementById('clienteNome').value = item.cliente || '';
+      document.getElementById('clienteTelefone').value = item.clienteTel || '';
+      if (item.dataOrc) document.getElementById('dataOrcamento').value = item.dataOrc;
+      if (item.validadeOrc) document.getElementById('validadeOrcamento').value = item.validadeOrc;
+
+      document.getElementById('inputDesconto').value = (item.totais && item.totais.descontoGeral) ? item.totais.descontoGeral : '';
+
+      itensOrcamento = JSON.parse(JSON.stringify(item.itens || [])).map(i => ({ ...i, selecionado: true }));
+
+      renderizarListaItensOrcamento();
+      calcularTotaisGerais();
+      fecharModalHistorico();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      mostrarToast('Orçamento carregado para edição!');
+    }
+
+    function enviarWhatsAppDoHistorico(id) {
+      const item = historicoOrcamentos.find(h => h.id === id);
+      if (item) {
+        ultimoPedidoFechado = item;
+        enviarWhatsApp();
+      }
+    }
+
+    function excluirDoHistorico(id) {
+      historicoOrcamentos = historicoOrcamentos.filter(h => h.id !== id);
+      localStorage.setItem('orca_historico_orcamentos', JSON.stringify(historicoOrcamentos));
+      atualizarContadorHistorico();
+      renderizarListaHistorico();
+      mostrarToast('Orçamento removido do histórico.');
+    }
+
+    function limparTodoHistorico() {
+      if (historicoOrcamentos.length === 0) return;
+      historicoOrcamentos = [];
+      localStorage.setItem('orca_historico_orcamentos', JSON.stringify(historicoOrcamentos));
+      atualizarContadorHistorico();
+      renderizarListaHistorico();
+      mostrarToast('Histórico limpo com sucesso.');
+    }
+
+    function gerarPDFProposta() {
+      const todosItens = (itensOrcamento.length > 0) ? itensOrcamento : (ultimoPedidoFechado ? ultimoPedidoFechado.itens : []);
+      const itemsToUse = todosItens.filter(i => i.selecionado !== false);
+
+      if (itemsToUse.length === 0) {
+        mostrarToast('Selecione pelo menos um item para gerar PDF.');
+        return;
+      }
+
+      mostrarToast('Gerando PDF do orçamento...');
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const totais = (itensOrcamento.length > 0) ? calcularTotaisGerais() : (ultimoPedidoFechado ? ultimoPedidoFechado.totais : { totalServicosGeral: 0, totalProdutosGeral: 0, descontoGeral: 0, totalFinal: 0 });
+      const cliente = (itensOrcamento.length > 0 ? document.getElementById('clienteNome').value.trim() : (ultimoPedidoFechado ? ultimoPedidoFechado.cliente : '')) || 'Cliente Não Informado';
+      const telefone = (itensOrcamento.length > 0 ? document.getElementById('clienteTelefone').value.trim() : (ultimoPedidoFechado ? ultimoPedidoFechado.clienteTel : '')) || 'Não informado';
+      const dataOrc = (itensOrcamento.length > 0 ? document.getElementById('dataOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.dataOrc : '')) || '-';
+      const validadeOrc = (itensOrcamento.length > 0 ? document.getElementById('validadeOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.validadeOrc : '')) || '-';
+
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, 210, 30, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text((dadosEmpresa.nome || 'Sua Empresa').toUpperCase(), 14, 13);
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`CNPJ/CPF: ${dadosEmpresa.documento || '00.000.000/0001-00'} | Tel: ${dadosEmpresa.telefone || '(00) 00000-0000'}`, 14, 20);
+
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ORÇAMENTO COMERCIAL', 196, 13, { align: 'right' });
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Data: ${dataOrc}  |  Validade: ${validadeOrc}`, 196, 20, { align: 'right' });
+
+      doc.setDrawColor(203, 213, 225);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 36, 182, 20, 2, 2, 'FD');
+
+      doc.setTextColor(51, 65, 85);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DADOS DO CLIENTE', 18, 42);
+
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Cliente: ${cliente}`, 18, 50);
+      doc.text(`Telefone: ${telefone}`, 130, 50);
+
+      const tableData = itemsToUse.map((item, idx) => {
+        const totalArea = item.largura * item.comprimento;
+        const valorChapa = totalArea * item.valorM2;
+        const valorMinuto = item.tempoServicoHora / 60;
+        const custoCorte = valorMinuto * item.tempoCorteMin;
+        const subtotalCorte = valorChapa + custoCorte;
+
+        let subtotalServicos = 0;
+        const servicosList = item.servicos.map(s => {
+          subtotalServicos += s.valorUnitario;
+          return `${s.nome}: ${formatarMoeda(s.valorUnitario)}`;
+        }).join('\n') || 'Nenhum serviço';
+
+        const totalItem = subtotalCorte + subtotalServicos;
+        let materialInfo = `${item.nomeMaterial}\nValor: ${formatarMoeda(subtotalCorte)}`;
+
+        return [
+          `#${idx + 1}`,
+          item.descricao || 'Item do Orçamento',
+          materialInfo,
+          servicosList,
+          formatarMoeda(totalItem)
+        ];
+      });
+
+      doc.autoTable({
+        startY: 62,
+        head: [['#', 'Descrição do Item', 'Material Selecionado', 'Serviços Prestados', 'Total Item']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: 'bold',
+          halign: 'left'
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [30, 41, 59]
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 50 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 42 },
+          4: { cellWidth: 25, halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 10;
+
+      doc.setDrawColor(15, 23, 42);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(120, finalY, 76, 38, 2, 2, 'FD');
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(51, 65, 85);
+      doc.text('Total Serviços:', 124, finalY + 8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatarMoeda(totais.totalServicosGeral), 192, finalY + 8, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Total Plano de Corte:', 124, finalY + 15);
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatarMoeda(totais.totalProdutosGeral), 192, finalY + 15, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('Desconto:', 124, finalY + 22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(220, 38, 38);
+      doc.text(`- ${formatarMoeda(totais.descontoGeral)}`, 192, finalY + 22, { align: 'right' });
+
+      doc.setDrawColor(203, 213, 225);
+      doc.line(124, finalY + 25, 192, finalY + 25);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('VALOR TOTAL:', 124, finalY + 32);
+      doc.setFontSize(11);
+      doc.setTextColor(22, 163, 74);
+      doc.text(formatarMoeda(totais.totalFinal), 192, finalY + 32, { align: 'right' });
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(100, 116, 139);
+      doc.text('Gerado por OrçaFácil Pro - Agradecemos a preferência!', 14, 285);
+
+      const clienteFileName = cliente.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      doc.save(`Orcamento_${clienteFileName}.pdf`);
+      mostrarToast('PDF baixado com sucesso!');
+    }
+
+    function prepararCardImpressao() {
+      const todosItens = (itensOrcamento.length > 0) ? itensOrcamento : (ultimoPedidoFechado ? ultimoPedidoFechado.itens : []);
+      const itemsToUse = todosItens.filter(i => i.selecionado !== false);
+      const totais = (itensOrcamento.length > 0) ? calcularTotaisGerais() : (ultimoPedidoFechado ? ultimoPedidoFechado.totais : { totalServicosGeral: 0, totalProdutosGeral: 0, descontoGeral: 0, totalFinal: 0 });
+
+      document.getElementById('impEmpresaNome').innerText = dadosEmpresa.nome || 'Sua Empresa';
+      document.getElementById('impEmpresaDoc').innerText = `CNPJ/CPF: ${dadosEmpresa.documento || '00.000.000/0001-00'}`;
+      document.getElementById('impEmpresaTel').innerText = `Contato: ${dadosEmpresa.telefone || '(00) 00000-0000'}`;
+
+      document.getElementById('impClienteNome').innerText = (itensOrcamento.length > 0 ? document.getElementById('clienteNome').value : (ultimoPedidoFechado ? ultimoPedidoFechado.cliente : '')) || 'Não informado';
+      document.getElementById('impClienteTel').innerText = (itensOrcamento.length > 0 ? document.getElementById('clienteTelefone').value : (ultimoPedidoFechado ? ultimoPedidoFechado.clienteTel : '')) || 'Não informado';
+      document.getElementById('impDataOrcamento').innerText = (itensOrcamento.length > 0 ? document.getElementById('dataOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.dataOrc : '')) || '-';
+      document.getElementById('impValidadeOrcamento').innerText = (itensOrcamento.length > 0 ? document.getElementById('validadeOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.validadeOrc : '')) || '-';
+
+      const tabela = document.getElementById('impTabelaItens');
+      if (itemsToUse.length === 0) {
+        tabela.innerHTML = `<tr><td colspan="6" style="padding: 8px; text-align: center; color: #64748b; font-style: italic;">Nenhum item selecionado para impressão.</td></tr>`;
+      } else {
+        tabela.innerHTML = itemsToUse.map((item, idx) => {
+          const totalArea = item.largura * item.comprimento;
+          const valorChapa = totalArea * item.valorM2;
+          const valorMinuto = item.tempoServicoHora / 60;
+          const custoCorte = valorMinuto * item.tempoCorteMin;
+          const subtotalCorte = valorChapa + custoCorte;
+
+          let subtotalServicos = 0;
+          const strServicos = item.servicos.map(s => {
+            subtotalServicos += s.valorUnitario;
+            return `${s.nome} (${formatarMoeda(s.valorUnitario)})`;
+          }).join(', ') || 'Nenhum';
+
+          const totalItem = subtotalCorte + subtotalServicos;
+
+          return `
+            <tr style="border-bottom: 1px solid #cbd5e1;">
+              <td style="padding: 6px; border: 1px solid #000; font-weight: bold; text-align: center;">${idx + 1}</td>
+              <td style="padding: 6px; border: 1px solid #000; font-weight: bold;">
+                ${item.descricao ? `<span style="color: #1e3a8a;">${item.descricao}</span><br>` : ''}
+                ${item.nomeMaterial}<br>
+                <span style="font-size: 9px; font-weight: normal;">Medidas: ${item.largura}m x ${item.comprimento}m (${totalArea.toFixed(2)} m²) | Corte: ${formatarMoeda(custoCorte)}</span>
+              </td>
+              <td style="padding: 6px; border: 1px solid #000;">${strServicos}</td>
+              <td style="padding: 6px; border: 1px solid #000; text-align: right; font-weight: bold;">${formatarMoeda(subtotalCorte)}</td>
+              <td style="padding: 6px; border: 1px solid #000; text-align: right; font-weight: bold;">${formatarMoeda(subtotalServicos)}</td>
+              <td style="padding: 6px; border: 1px solid #000; text-align: right; font-weight: bold;">${formatarMoeda(totalItem)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('impTotalServicos').innerText = formatarMoeda(totais.totalServicosGeral);
+      document.getElementById('impTotalProdutos').innerText = formatarMoeda(totais.totalProdutosGeral);
+      document.getElementById('impDesconto').innerText = formatarMoeda(totais.descontoGeral);
+      document.getElementById('impTotalFinal').innerText = formatarMoeda(totais.totalFinal);
+    }
+
+    function imprimirOrcamento() {
+      prepararCardImpressao();
+      window.print();
+    }
+
+    function enviarWhatsApp() {
+      const cliente = (itensOrcamento.length > 0 ? document.getElementById('clienteNome').value.trim() : (ultimoPedidoFechado ? ultimoPedidoFechado.cliente : '')) || 'Cliente';
+      let telCliente = (itensOrcamento.length > 0 ? document.getElementById('clienteTelefone').value : (ultimoPedidoFechado ? ultimoPedidoFechado.clienteTel : '')).replace(/\D/g, '');
+      
+      const todosItens = (itensOrcamento.length > 0) ? itensOrcamento : (ultimoPedidoFechado ? ultimoPedidoFechado.itens : []);
+      const itemsToUse = todosItens.filter(i => i.selecionado !== false);
+      const totais = (itensOrcamento.length > 0) ? calcularTotaisGerais() : (ultimoPedidoFechado ? ultimoPedidoFechado.totais : { totalServicosGeral: 0, totalProdutosGeral: 0, descontoGeral: 0, totalFinal: 0 });
+
+      let texto = `*Olá, ${cliente}!*\n\n`;
+      texto += `Segue o resumo do seu orçamento gerado por *${dadosEmpresa.nome}*:\n\n`;
+      texto += `------------------------------------\n`;
+
+      if (itemsToUse.length === 0) {
+        texto += `Nenhum item selecionado.\n`;
+      } else {
+        itemsToUse.forEach((item, idx) => {
+          const totalArea = item.largura * item.comprimento;
+          const valorChapa = totalArea * item.valorM2;
+          const valorMinuto = item.tempoServicoHora / 60;
+          const custoCorte = valorMinuto * item.tempoCorteMin;
+          const subtotalCorte = valorChapa + custoCorte;
+
+          let subtotalServicos = 0;
+          let servList = [];
+          item.servicos.forEach(s => {
+            subtotalServicos += s.valorUnitario;
+            servList.push(s.nome);
+          });
+
+          texto += `*Item #${idx + 1}:* ${item.descricao ? item.descricao + ' - ' : ''}${item.nomeMaterial}\n`;
+          texto += `• Medidas: ${item.largura}m x ${item.comprimento}m (${totalArea.toFixed(2)} m²)\n`;
+          texto += `• Corte: ${item.tempoCorteMin} min (${formatarMoeda(subtotalCorte)})\n`;
+          if (servList.length > 0) {
+            texto += `• Serviços: ${servList.join(', ')} (${formatarMoeda(subtotalServicos)})\n`;
+          }
+          texto += `*Subtotal Item:* ${formatarMoeda(subtotalCorte + subtotalServicos)}\n\n`;
+        });
+      }
+
+      texto += `------------------------------------\n`;
+      if (totais.descontoGeral > 0) {
+        texto += `Desconto: -${formatarMoeda(totais.descontoGeral)}\n`;
+      }
+      texto += `*VALOR TOTAL:* ${formatarMoeda(totais.totalFinal)}\n\n`;
+      texto += `Validade da Proposta: ${(itensOrcamento.length > 0 ? document.getElementById('validadeOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.validadeOrc : '')) || '15 dias'}\n\n`;
+      texto += `Ficamos à disposição!\n*${dadosEmpresa.nome}*\nContatos: ${dadosEmpresa.telefone}`;
+
+      let url = '';
+      if (telCliente.length >= 10) {
+        if (!telCliente.startsWith('55') && telCliente.length <= 11) {
+          telCliente = '55' + telCliente;
+        }
+        url = `https://api.whatsapp.com/send?phone=${telCliente}&text=${encodeURIComponent(texto)}`;
+      } else {
+        url = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+      }
+
+      window.open(url, '_blank');
+    }
+
+    function enviarEmail() {
+      const cliente = (itensOrcamento.length > 0 ? document.getElementById('clienteNome').value.trim() : (ultimoPedidoFechado ? ultimoPedidoFechado.cliente : '')) || 'Cliente';
+      const todosItens = (itensOrcamento.length > 0) ? itensOrcamento : (ultimoPedidoFechado ? ultimoPedidoFechado.itens : []);
+      const itemsToUse = todosItens.filter(i => i.selecionado !== false);
+      const totais = (itensOrcamento.length > 0) ? calcularTotaisGerais() : (ultimoPedidoFechado ? ultimoPedidoFechado.totais : { totalServicosGeral: 0, totalProdutosGeral: 0, descontoGeral: 0, totalFinal: 0 });
+
+      let texto = `Prezado(a) ${cliente},\n\n`;
+      texto += `Segue o resumo do seu orçamento gerado por ${dadosEmpresa.nome}:\n\n`;
+      texto += `------------------------------------\n`;
+      
+      if (itemsToUse.length === 0) {
+        texto += `Nenhum item selecionado.\n`;
+      } else {
+        itemsToUse.forEach((item, idx) => {
+          const totalArea = item.largura * item.comprimento;
+          const valorChapa = totalArea * item.valorM2;
+          const valorMinuto = item.tempoServicoHora / 60;
+          const custoCorte = valorMinuto * item.tempoCorteMin;
+          const subtotalCorte = valorChapa + custoCorte;
+
+          let subtotalServicos = 0;
+          let servList = [];
+          item.servicos.forEach(s => {
+            subtotalServicos += s.valorUnitario;
+            servList.push(s.nome);
+          });
+
+          texto += `Item #${idx + 1}: ${item.descricao ? item.descricao + ' - ' : ''}${item.nomeMaterial}\n`;
+          texto += `- Medidas: ${item.largura}m x ${item.comprimento}m (${totalArea.toFixed(2)} m²)\n`;
+          texto += `- Corte: ${item.tempoCorteMin} min (${formatarMoeda(subtotalCorte)})\n`;
+          if (servList.length > 0) {
+            texto += `- Serviços: ${servList.join(', ')} (${formatarMoeda(subtotalServicos)})\n`;
+          }
+          texto += `Subtotal do Item: ${formatarMoeda(subtotalCorte + subtotalServicos)}\n\n`;
+        });
+      }
+
+      texto += `------------------------------------\n`;
+      if (totais.descontoGeral > 0) {
+        texto += `Desconto Aplicado: ${formatarMoeda(totais.descontoGeral)}\n`;
+      }
+      texto += `VALOR TOTAL FINAL: ${formatarMoeda(totais.totalFinal)}\n\n`;
+      texto += `Proposta válida até: ${(itensOrcamento.length > 0 ? document.getElementById('validadeOrcamento').value : (ultimoPedidoFechado ? ultimoPedidoFechado.validadeOrc : '')) || '15 dias'}\n\n`;
+      texto += `Atenciosamente,\n${dadosEmpresa.nome}\nTelefone: ${dadosEmpresa.telefone}`;
+
+      const assunto = `Orçamento e Proposta Comercial - ${cliente}`;
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(texto)}`;
+
+      window.location.href = mailtoUrl;
+    }
+
+    function abrirModalServicos() {
+      renderizarCatalogoServicos();
+      document.getElementById('modalServicos').classList.remove('hidden');
+    }
+
+    function fecharModalServicos() {
+      document.getElementById('modalServicos').classList.add('hidden');
+      limparFormServico();
+    }
+
+    function renderizarCatalogoServicos() {
+      const listEl = document.getElementById('listaCatalogoServicos');
+      if (!listEl) return;
+      if (catalogoServicos.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-slate-400 italic">Nenhum serviço cadastrado.</p>`;
+        return;
+      }
+      listEl.innerHTML = catalogoServicos.map(s => `
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+          <div class="font-medium text-slate-800">
+            ${s.nome} <span class="text-slate-500 font-semibold ml-1">(${formatarMoeda(s.valor)})</span>
+          </div>
+          <div class="flex space-x-1">
+            <button type="button" onclick="editarServicoCatalogo('${s.id}')" class="p-1 text-blue-600 hover:text-blue-800">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button type="button" onclick="excluirServicoCatalogo('${s.id}')" class="p-1 text-rose-500 hover:text-rose-700">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function salvarServicoCatalogo() {
+      const idEdit = document.getElementById('editServicoId').value;
+      const nome = document.getElementById('inputNomeServico').value.trim();
+      const valor = Number(document.getElementById('inputValorServico').value) || 0;
+
+      if (!nome) {
+        mostrarToast('Digite o nome do serviço!');
+        return;
+      }
+
+      if (idEdit) {
+        const item = catalogoServicos.find(s => s.id === idEdit);
+        if (item) {
+          item.nome = nome;
+          item.valor = valor;
+        }
+      } else {
+        const newId = 'cat_' + Date.now();
+        catalogoServicos.push({ id: newId, nome, valor });
+      }
+
+      localStorage.setItem('orca_catalogo_servicos', JSON.stringify(catalogoServicos));
+      limparFormServico();
+      renderizarCatalogoServicos();
+      renderizarCheckpointsUnificados();
+      mostrarToast('Serviço salvo no catálogo!');
+    }
+
+    function editarServicoCatalogo(id) {
+      const item = catalogoServicos.find(s => s.id === id);
+      if (item) {
+        document.getElementById('editServicoId').value = item.id;
+        document.getElementById('inputNomeServico').value = item.nome;
+        document.getElementById('inputValorServico').value = item.valor;
+        document.getElementById('btnCancelarEdit').classList.remove('hidden');
+        document.getElementById('btnSalvarServico').innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Atualizar`;
+      }
+    }
+
+    function excluirServicoCatalogo(id) {
+      catalogoServicos = catalogoServicos.filter(s => s.id !== id);
+      delete tempServicosItem[id];
+      localStorage.setItem('orca_catalogo_servicos', JSON.stringify(catalogoServicos));
+      renderizarCatalogoServicos();
+      renderizarCheckpointsUnificados();
+      mostrarToast('Serviço removido.');
+    }
+
+    function limparFormServico() {
+      document.getElementById('editServicoId').value = '';
+      document.getElementById('inputNomeServico').value = '';
+      document.getElementById('inputValorServico').value = '';
+      document.getElementById('btnCancelarEdit').classList.add('hidden');
+      document.getElementById('btnSalvarServico').innerHTML = `<i class="fa-solid fa-plus mr-1.5"></i> Salvar e Adicionar`;
+    }
+
+    function abrirModalCatalogoMateriais() {
+      renderizarCatalogoMateriais();
+      document.getElementById('modalCatalogoMateriais').classList.remove('hidden');
+    }
+
+    function fecharModalCatalogoMateriais() {
+      document.getElementById('modalCatalogoMateriais').classList.add('hidden');
+      limparFormMaterialCatalogo();
+    }
+
+    function renderizarCatalogoMateriais() {
+      const container = document.getElementById('listaCatalogoMateriais');
+      const countEl = document.getElementById('countMateriais');
+
+      if (countEl) countEl.innerText = catalogoMateriais.length;
+
+      if (!container) return;
+
+      if (!catalogoMateriais || catalogoMateriais.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300 p-4">
+            <p class="text-xs text-slate-500 font-medium">Nenhum material cadastrado.</p>
+            <button type="button" onclick="restaurarMateriaisPadrao()" class="mt-3 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg text-xs font-semibold border border-purple-200">
+              <i class="fa-solid fa-rotate-left mr-1"></i> Carregar Exemplo
+            </button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = catalogoMateriais.map(m => {
+        const larg = m.chapaLargura || 0;
+        const comp = m.chapaComprimento || 0;
+        const areaTotal = larg * comp;
+        const dimensoesTexto = areaTotal > 0 
+          ? `${comp.toFixed(2)}m x ${larg.toFixed(2)}m (${areaTotal.toFixed(2)} m²)` 
+          : (m.tamanhoChapa || 'N/I');
+
+        return `
+          <div class="flex flex-wrap items-center justify-between bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-xs gap-3">
+            <div class="space-y-1 flex-1 min-w-[220px]">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="font-bold text-slate-800 text-sm">${m.nome}</span>
+                ${m.espessura ? `<span class="bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded-md text-[10px]">${m.espessura}</span>` : ''}
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600 pt-1">
+                <div>Chapa: <strong>${dimensoesTexto}</strong></div>
+                <div>Valor Chapa: <strong>${formatarMoeda(m.custoChapa)}</strong></div>
+                <div>Custo m²: <strong>${formatarMoeda(m.custoM2)}</strong></div>
+                <div>Venda m²: <strong class="text-purple-700 font-bold">${formatarMoeda(m.valorM2)}</strong></div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button type="button" onclick="usarMaterialNoProduto('${m.id}')" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-xs shadow-sm flex items-center">
+                <i class="fa-solid fa-plus mr-1"></i> Usar
+              </button>
+              <button type="button" onclick="editarMaterialCatalogo('${m.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button type="button" onclick="excluirMaterialCatalogo('${m.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function restaurarMateriaisPadrao() {
+      catalogoMateriais = [...materiaisPadrao];
+      localStorage.setItem('orca_catalogo_materiais', JSON.stringify(catalogoMateriais));
+      renderizarCatalogoMateriais();
+      popularSelectMateriaisFixos();
+      mostrarToast('Materiais de exemplo carregados!');
+    }
+
+    function usarMaterialNoProduto(id) {
+      document.getElementById('fixoMaterialId').value = id;
+      aoSelecionarMaterialFixo(id);
+      fecharModalCatalogoMateriais();
+      const painel = document.getElementById('painelUnificado');
+      if (painel) painel.scrollIntoView({ behavior: 'smooth' });
+      mostrarToast(`Material selecionado no painel!`);
+    }
+
+    function calcularValoresModalMaterial() {
+      const chapaLargura = Number(document.getElementById('matCatChapaLargura')?.value) || 0;
+      const chapaComprimento = Number(document.getElementById('matCatChapaComprimento')?.value) || 0;
+      const custoChapa = Number(document.getElementById('matCatCustoChapa')?.value) || 0;
+      const sobraValRaw = document.getElementById('matCatSobra')?.value;
+      const sobra = sobraValRaw !== "" && sobraValRaw !== null ? Number(sobraValRaw) : 0;
+
+      const totalM2Chapa = chapaLargura * chapaComprimento;
+
+      const displayAreaEl = document.getElementById('displayAreaTotalChapaModal');
+      if (displayAreaEl) {
+        displayAreaEl.innerText = `${totalM2Chapa.toFixed(2)} m²`;
+      }
+
+      let custoM2 = 0;
+      if (totalM2Chapa > 0 && custoChapa > 0) {
+        custoM2 = custoChapa / totalM2Chapa;
+      } else {
+        custoM2 = Number(document.getElementById('matCatCustoM2')?.value) || 0;
+      }
+
+      const custoM2Input = document.getElementById('matCatCustoM2');
+      if (custoM2Input && (totalM2Chapa > 0 || custoChapa > 0)) {
+        custoM2Input.value = custoM2.toFixed(2);
+      }
+
+      const valorM2Final = custoM2 * (1 + sobra / 100);
+      const valorM2Input = document.getElementById('matCatValorM2');
+      if (valorM2Input) {
+        valorM2Input.value = valorM2Final.toFixed(2);
+      }
+    }
+
+    function salvarMaterialCatalogo() {
+      const idEdit = document.getElementById('editMatCatId').value;
+      const nome = document.getElementById('matCatNome').value.trim();
+      const espessura = document.getElementById('matCatEspessura').value.trim();
+      const chapaLargura = Number(document.getElementById('matCatChapaLargura').value) || 0;
+      const chapaComprimento = Number(document.getElementById('matCatChapaComprimento').value) || 0;
+      const totalM2Chapa = chapaLargura * chapaComprimento;
+      const tamanhoChapa = totalM2Chapa > 0 ? `${chapaComprimento} x ${chapaLargura}m (${totalM2Chapa.toFixed(2)} m²)` : '';
+      const custoChapa = Number(document.getElementById('matCatCustoChapa').value) || 0;
+      let custoM2 = totalM2Chapa > 0 ? (custoChapa / totalM2Chapa) : (Number(document.getElementById('matCatCustoM2').value) || 0);
+      const sobraValRaw = document.getElementById('matCatSobra').value;
+      const sobra = sobraValRaw !== "" && sobraValRaw !== null ? Number(sobraValRaw) : 0;
+      let valorM2 = Number(document.getElementById('matCatValorM2').value) || (custoM2 * (1 + sobra / 100));
+
+      if (!nome) {
+        mostrarToast('Digite o nome do material!');
+        return;
+      }
+
+      if (idEdit) {
+        const item = catalogoMateriais.find(m => m.id === idEdit);
+        if (item) {
+          item.nome = nome;
+          item.espessura = espessura;
+          item.chapaLargura = chapaLargura;
+          item.chapaComprimento = chapaComprimento;
+          item.tamanhoChapa = tamanhoChapa;
+          item.custoChapa = custoChapa;
+          item.custoM2 = custoM2;
+          item.sobra = sobra;
+          item.valorM2 = valorM2;
+        }
+      } else {
+        catalogoMateriais.unshift({
+          id: 'matcat_' + Date.now(),
+          nome,
+          espessura,
+          chapaLargura,
+          chapaComprimento,
+          tamanhoChapa,
+          custoChapa,
+          custoM2,
+          sobra,
+          valorM2
+        });
+      }
+
+      localStorage.setItem('orca_catalogo_materiais', JSON.stringify(catalogoMateriais));
+      limparFormMaterialCatalogo();
+      renderizarCatalogoMateriais();
+      popularSelectMateriaisFixos();
+      mostrarToast('Material salvo no catálogo!');
+    }
+
+    function editarMaterialCatalogo(id) {
+      const m = catalogoMateriais.find(item => item.id === id);
+      if (m) {
+        document.getElementById('editMatCatId').value = m.id;
+        document.getElementById('matCatNome').value = m.nome || '';
+        document.getElementById('matCatEspessura').value = m.espessura || '';
+        document.getElementById('matCatChapaLargura').value = m.chapaLargura || '';
+        document.getElementById('matCatChapaComprimento').value = m.chapaComprimento || '';
+        document.getElementById('matCatCustoChapa').value = m.custoChapa || '';
+        document.getElementById('matCatCustoM2').value = m.custoM2 ? m.custoM2.toFixed(2) : '';
+        document.getElementById('matCatSobra').value = m.sobra !== undefined && m.sobra !== null ? m.sobra : '';
+        document.getElementById('matCatValorM2').value = m.valorM2 ? m.valorM2.toFixed(2) : '';
+
+        calcularValoresModalMaterial();
+
+        document.getElementById('btnCancelarEditMat').classList.remove('hidden');
+        document.getElementById('btnSalvarMatCat').innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Atualizar Material`;
+      }
+    }
+
+    function excluirMaterialCatalogo(id) {
+      catalogoMateriais = catalogoMateriais.filter(m => m.id !== id);
+      localStorage.setItem('orca_catalogo_materiais', JSON.stringify(catalogoMateriais));
+      renderizarCatalogoMateriais();
+      popularSelectMateriaisFixos();
+      mostrarToast('Material excluído.');
+    }
+
+    function limparFormMaterialCatalogo() {
+      document.getElementById('editMatCatId').value = '';
+      document.getElementById('matCatNome').value = '';
+      document.getElementById('matCatEspessura').value = '';
+      document.getElementById('matCatChapaLargura').value = '';
+      document.getElementById('matCatChapaComprimento').value = '';
+      document.getElementById('matCatCustoChapa').value = '';
+      document.getElementById('matCatCustoM2').value = '';
+      document.getElementById('matCatSobra').value = '';
+      document.getElementById('matCatValorM2').value = '';
+      const displayAreaEl = document.getElementById('displayAreaTotalChapaModal');
+      if (displayAreaEl) displayAreaEl.innerText = '0,00 m²';
+
+      document.getElementById('btnCancelarEditMat').classList.add('hidden');
+      document.getElementById('btnSalvarMatCat').innerHTML = `<i class="fa-solid fa-plus mr-1.5"></i> Salvar Material`;
+    }
+
+    function abrirModalEmpresa() {
+      document.getElementById('empresaNome').value = dadosEmpresa.nome || '';
+      document.getElementById('empresaDoc').value = dadosEmpresa.documento || '';
+      document.getElementById('empresaTel').value = dadosEmpresa.telefone || '';
+      document.getElementById('empresaEmail').value = dadosEmpresa.email || '';
+      document.getElementById('empresaEndereco').value = dadosEmpresa.endereco || '';
+      document.getElementById('empresaPix').value = dadosEmpresa.pix || '';
+      
+      renderizarListaUsuarios();
+      trocarAbaConfig('empresa');
+      document.getElementById('modalEmpresa').classList.remove('hidden');
+    }
+
+    function renderizarListaUsuarios() {
+      const container = document.getElementById('listaUsuariosCadastrados');
+      const countEl = document.getElementById('countUsuarios');
+      if (countEl) countEl.innerText = listaUsuarios.length;
+      if (!container) return;
+
+      if (listaUsuarios.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-2">Nenhum usuário cadastrado.</p>`;
+        return;
+      }
+
+      container.innerHTML = listaUsuarios.map(u => `
+        <div class="flex flex-wrap items-center justify-between bg-white p-3 rounded-xl border border-slate-200 text-xs shadow-sm gap-2">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-700 font-bold flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-1.5">
+                <span class="font-bold text-slate-800">${u.nome}</span>
+                <span class="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">${u.perfil || 'Operador'}</span>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-0.5">
+                Usuário: <strong class="text-slate-700">${u.login}</strong> | Senha: <strong class="text-slate-700">${'•'.repeat(u.senha ? u.senha.length : 3)}</strong>
+              </p>
+              <p class="text-[10px] text-slate-400">
+                <i class="fa-solid fa-envelope mr-1"></i>${u.email || 'E-mail N/I'} | <i class="fa-solid fa-phone mr-1"></i>${u.telefone || 'Tel N/I'}
+              </p>
+            </div>
+          </div>
+          <div class="flex space-x-1">
+            <button onclick="editarUsuario('${u.id}')" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Editar">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button onclick="excluirUsuario('${u.id}')" class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Excluir">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function salvarUsuario() {
+      const idEdit = document.getElementById('editUsuarioId').value;
+      const nome = document.getElementById('usrNome').value.trim();
+      const login = document.getElementById('usrLogin').value.trim();
+      const email = document.getElementById('usrEmail').value.trim();
+      const telefone = document.getElementById('usrTelefone').value.trim();
+      const senha = document.getElementById('usrSenha').value.trim();
+      const perfil = document.getElementById('usrPerfil').value;
+
+      if (!nome || !login || !senha || !email || !telefone) {
+        mostrarToast('Preencha Nome, Usuário, E-mail, Telefone e Senha!');
+        return;
+      }
+
+      if (idEdit) {
+        const usr = listaUsuarios.find(u => u.id === idEdit);
+        if (usr) {
+          usr.nome = nome;
+          usr.login = login;
+          usr.email = email;
+          usr.telefone = telefone;
+          usr.senha = senha;
+          usr.perfil = perfil;
+        }
+      } else {
+        if (listaUsuarios.some(u => u.login.toLowerCase() === login.toLowerCase())) {
+          mostrarToast('Já existe um usuário com este login!');
+          return;
+        }
+        listaUsuarios.push({
+          id: 'usr_' + Date.now(),
+          nome,
+          login,
+          email,
+          telefone,
+          senha,
+          perfil
+        });
+      }
+
+      localStorage.setItem('orca_usuarios', JSON.stringify(listaUsuarios));
+      limparFormUsuario();
+      renderizarListaUsuarios();
+      mostrarToast('Usuário salvo com sucesso!');
+    }
+
+    function editarUsuario(id) {
+      const u = listaUsuarios.find(usr => usr.id === id);
+      if (u) {
+        document.getElementById('editUsuarioId').value = u.id;
+        document.getElementById('usrNome').value = u.nome;
+        document.getElementById('usrLogin').value = u.login;
+        document.getElementById('usrEmail').value = u.email || '';
+        document.getElementById('usrTelefone').value = u.telefone || '';
+        document.getElementById('usrSenha').value = u.senha;
+        document.getElementById('usrPerfil').value = u.perfil || 'Administrador';
+
+        document.getElementById('btnCancelarEditUsr').classList.remove('hidden');
+        document.getElementById('btnSalvarUsr').innerHTML = `<i class="fa-solid fa-check mr-1.5"></i> Atualizar Usuário`;
+      }
+    }
+
+    function excluirUsuario(id) {
+      if (listaUsuarios.length <= 1) {
+        mostrarToast('Você deve manter ao menos um usuário cadastrado!');
+        return;
+      }
+      listaUsuarios = listaUsuarios.filter(u => u.id !== id);
+      localStorage.setItem('orca_usuarios', JSON.stringify(listaUsuarios));
+      renderizarListaUsuarios();
+      mostrarToast('Usuário removido.');
+    }
+
+    function limparFormUsuario() {
+      document.getElementById('editUsuarioId').value = '';
+      document.getElementById('usrNome').value = '';
+      document.getElementById('usrLogin').value = '';
+      document.getElementById('usrEmail').value = '';
+      document.getElementById('usrTelefone').value = '';
+      document.getElementById('usrSenha').value = '';
+      document.getElementById('usrPerfil').value = 'Administrador';
+      document.getElementById('btnCancelarEditUsr').classList.add('hidden');
+      document.getElementById('btnSalvarUsr').innerHTML = `<i class="fa-solid fa-plus mr-1.5"></i> Salvar Usuário`;
+    }
+
+    function abrirModalRecuperarSenha() {
+      document.getElementById('passoRecuperacao1').classList.remove('hidden');
+      document.getElementById('passoRecuperacao2').classList.add('hidden');
+      document.getElementById('inputContatoRecuperacao').value = '';
+      document.getElementById('inputCodigoSMS').value = '';
+      document.getElementById('inputNovaSenhaRecuperada').value = '';
+      document.getElementById('modalRecuperarSenha').classList.remove('hidden');
+    }
+
+    function fecharModalRecuperarSenha() {
+      document.getElementById('modalRecuperarSenha').classList.add('hidden');
+    }
+
+    function enviarCodigoRecuperacao() {
+      const contato = document.getElementById('inputContatoRecuperacao').value.trim().toLowerCase();
+      const canal = document.querySelector('input[name="canalEnvio"]:checked')?.value || 'sms';
+
+      if (!contato) {
+        mostrarToast('Informe o seu E-mail ou Telefone cadastrado!');
+        return;
+      }
+
+      const usr = listaUsuarios.find(u => 
+        (u.email && u.email.toLowerCase() === contato) || 
+        (u.telefone && u.telefone.replace(/\D/g, '') === contato.replace(/\D/g, '')) ||
+        (u.login && u.login.toLowerCase() === contato)
+      );
+
+      if (!usr) {
+        mostrarToast('Nenhum usuário encontrado com este e-mail ou telefone!');
+        return;
+      }
+
+      usuarioRecuperacaoAtivo = usr;
+      codigoRecuperacaoGerado = Math.floor(100000 + Math.random() * 900000).toString();
+
+      document.getElementById('msgDestinoCodigo').innerText = canal === 'sms' 
+        ? `Código enviado via SMS para o telefone ${usr.telefone || contato}.`
+        : `Código enviado para o e-mail ${usr.email || contato}.`;
+
+      document.getElementById('passoRecuperacao1').classList.add('hidden');
+      document.getElementById('passoRecuperacao2').classList.remove('hidden');
+
+      document.getElementById('inputCodigoSMS').value = codigoRecuperacaoGerado;
+
+      mostrarToast(`Código ${codigoRecuperacaoGerado} enviado via ${canal.toUpperCase()}!`);
+    }
+
+    function validarCodigoERedefinirSenha() {
+      const codigoDigitado = document.getElementById('inputCodigoSMS').value.trim();
+      const novaSenha = document.getElementById('inputNovaSenhaRecuperada').value.trim();
+
+      if (!codigoDigitado) {
+        mostrarToast('Digite o código de 6 dígitos!');
+        return;
+      }
+
+      if (codigoDigitado !== codigoRecuperacaoGerado) {
+        mostrarToast('Código de verificação incorreto!');
+        return;
+      }
+
+      if (!novaSenha) {
+        mostrarToast('Digite a nova senha!');
+        return;
+      }
+
+      if (usuarioRecuperacaoAtivo) {
+        usuarioRecuperacaoAtivo.senha = novaSenha;
+        localStorage.setItem('orca_usuarios', JSON.stringify(listaUsuarios));
+        renderizarListaUsuarios();
+        fecharModalRecuperarSenha();
+        mostrarToast('Senha redefinida com sucesso!');
+      }
+    }
+
+    function trocarAbaConfig(aba) {
+      document.querySelectorAll('.tab-config-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-config-btn').forEach(el => {
+        el.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+        el.classList.add('bg-slate-200', 'text-slate-700', 'hover:bg-slate-300');
+      });
+
+      const targetContent = document.getElementById('tabConfig_' + aba);
+      const targetBtn = document.getElementById('btnTabConfig_' + aba);
+
+      if (targetContent) targetContent.classList.remove('hidden');
+      if (targetBtn) {
+        targetBtn.classList.remove('bg-slate-200', 'text-slate-700', 'hover:bg-slate-300');
+        targetBtn.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+      }
+    }
+
+    function fecharModalEmpresa() {
+      document.getElementById('modalEmpresa').classList.add('hidden');
+    }
+
+    function salvarDadosEmpresa() {
+      dadosEmpresa.nome = document.getElementById('empresaNome').value || 'Minha Empresa';
+      dadosEmpresa.documento = document.getElementById('empresaDoc').value || '';
+      dadosEmpresa.telefone = document.getElementById('empresaTel').value || '';
+      dadosEmpresa.email = document.getElementById('empresaEmail').value || '';
+      dadosEmpresa.endereco = document.getElementById('empresaEndereco').value || '';
+      dadosEmpresa.pix = document.getElementById('empresaPix').value || '';
+
+      localStorage.setItem('orca_dados_empresa', JSON.stringify(dadosEmpresa));
+      fecharModalEmpresa();
+      mostrarToast('Configurações salvas com sucesso!');
+    }
+
+    function carregarDadosExemplo() {
+      document.getElementById('clienteNome').value = 'João Silva / Cliente Exemplo';
+      document.getElementById('clienteTelefone').value = '(11) 98888-1234';
+
+      itensOrcamento = [
+        {
+          id: 'item_ex_1',
+          selecionado: true,
+          descricao: 'Armário de Cozinha Suspenso',
+          materialId: 'matcat_1',
+          nomeMaterial: 'MDF Branco TX (15mm)',
+          largura: 1.20,
+          comprimento: 2.40,
+          valorM2: 54.35,
+          tempoServicoHora: 60.00,
+          tempoCorteMin: 30,
+          servicos: [
+            { idServico: 'serv_1', nome: 'Mão de Obra de Corte e Dobra', quantidade: 1, valorUnitario: 150.00 }
+          ]
+        }
+      ];
+
+      document.getElementById('inputDesconto').value = '';
+
+      renderizarListaItensOrcamento();
+      calcularTotaisGerais();
+      mostrarToast('Dados de exemplo carregados!');
+    }
+
+    function limparTudo() {
+      itensOrcamento = [];
+      tempServicosItem = {};
+      document.getElementById('clienteNome').value = '';
+      document.getElementById('clienteTelefone').value = '';
+      document.getElementById('inputDesconto').value = '';
+
+      limparCamposUnificados();
+      renderizarListaItensOrcamento();
+      calcularTotaisGerais();
+      mostrarToast('Formulário limpo!');
+    }
+
+    window.onload = function() {
+      verificarSessao();
+
+      const hoje = new Date().toISOString().split('T')[0];
+      const validade = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      if (document.getElementById('dataOrcamento')) document.getElementById('dataOrcamento').value = hoje;
+      if (document.getElementById('validadeOrcamento')) document.getElementById('validadeOrcamento').value = validade;
+
+      renderizarCheckpointsUnificados();
+      renderizarCatalogoMateriais();
+      popularSelectMateriaisFixos();
+      atualizarContadorHistorico();
+      carregarDadosExemplo();
+    };
+  </script>
+</body>
+</html>
