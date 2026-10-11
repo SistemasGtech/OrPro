@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerenciador de Orçamentos e Materiais</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-4 md:p-8">
+
+  <div class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Cabeçalho -->
+    <header class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-900">Gerenciador de Orçamentos</h1>
+        <p class="text-sm text-slate-500">Sistema integrado ao Supabase para persistência em nuvem</p>
+      </div>
+      <div id="status-conexao" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+        Conectando ao Supabase...
+      </div>
+    </header>
+
+    <!-- Formulário de Cadastro de Materiais -->
+    <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <h2 class="text-lg font-semibold text-slate-800 mb-4">Gerenciar Catálogo de Materiais</h2>
+      
+      <form id="form-material" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Nome do Material</label>
+          <input type="text" id="mat-nome" required placeholder="Ex: MDF Freijó 15mm" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Espessura</label>
+          <input type="text" id="mat-espessura" placeholder="Ex: 15mm" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Largura Chapa (m)</label>
+          <input type="number" step="0.01" id="mat-largura" required placeholder="1.84" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Comprimento Chapa (m)</label>
+          <input type="number" step="0.01" id="mat-comprimento" required placeholder="2.75" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Valor Chapa (R\$)</label>
+          <input type="number" step="0.01" id="mat-valor" required placeholder="280.00" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">% Sobra / Margem</label>
+          <input type="number" step="0.1" id="mat-sobra" value="10" class="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="md:col-span-2 flex justify-end">
+          <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors shadow-sm">
+            Salvar Material
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Lista de Materiais -->
+    <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold text-slate-800">Materiais Cadastrados</h2>
+        <button onclick="carregarMateriais()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Atualizar Lista</button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-600">
+          <thead class="bg-slate-50 text-xs text-slate-500 uppercase font-semibold border-b border-slate-200">
+            <tr>
+              <th class="p-3">Material</th>
+              <th class="p-3">Dimensões</th>
+              <th class="p-3">Valor Chapa</th>
+              <th class="p-3">Custo m²</th>
+              <th class="p-3">Venda m²</th>
+              <th class="p-3 text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-materiais" class="divide-y divide-slate-100">
+            <tr>
+              <td colspan="6" class="p-4 text-center text-slate-400">Carregando materiais...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Lógica da Aplicação -->
+  <script>
+    // Credenciais Supabase
+    const SUPABASE_URL = 'https://godhqheqbimycesmusmz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_UObFYc1cNfeAqYb0A8VQCQ_g3tPVtew';
+
+    // Inicialização da instância única
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = supabaseClient; // Disponível no console (F12)
+
+    // Atualiza o status visual de conexão
+    function atualizarStatus(ok, msg) {
+      const el = document.getElementById('status-conexao');
+      if (ok) {
+        el.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+        el.innerText = msg || 'Conectado ao Supabase';
+      } else {
+        el.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800';
+        el.innerText = msg || 'Erro de Conexão';
+      }
+    }
+
+    // Função de Salvar Material
+    document.getElementById('form-material').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nome = document.getElementById('mat-nome').value;
+      const espessura = document.getElementById('mat-espessura').value;
+      const largura = parseFloat(document.getElementById('mat-largura').value) || 0;
+      const comprimento = parseFloat(document.getElementById('mat-comprimento').value) || 0;
+      const custoChapa = parseFloat(document.getElementById('mat-valor').value) || 0;
+      const sobra = parseFloat(document.getElementById('mat-sobra').value) || 0;
+
+      // Cálculo da área da chapa e custos por m²
+      const areaM2 = largura * comprimento;
+      const custoM2 = areaM2 > 0 ? (custoChapa / areaM2) : 0;
+      const valorM2 = custoM2 * (1 + (sobra / 100));
+
+      const payload = {
+        nome: nome,
+        espessura: espessura,
+        chapa_largura: largura,
+        chapa_comprimento: comprimento,
+        custo_chapa: custoChapa,
+        custo_m2: parseFloat(custoM2.toFixed(2)),
+        sobra: sobra,
+        valor_m2: parseFloat(valorM2.toFixed(2))
+      };
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('materiais')
+          .insert([payload])
+          .select();
+
+        if (error) throw error;
+
+        alert('Material cadastrado com sucesso no Supabase!');
+        document.getElementById('form-material').reset();
+        carregarMateriais();
+      } catch (err) {
+        console.error('Erro ao salvar no Supabase:', err.message);
+        alert('Erro ao salvar no Supabase: ' + err.message);
+      }
+    });
+
+    // Função para Listar Materiais
+    async function carregarMateriais() {
+      const tbody = document.getElementById('tabela-materiais');
+      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Buscando materiais...</td></tr>';
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('materiais')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        atualizarStatus(true, 'Conectado ao Supabase');
+
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">Nenhum material cadastrado ainda.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.map(m => `
+          <tr class="hover:bg-slate-50 transition-colors">
+            <td class="p-3 font-medium text-slate-800">${m.nome || '-'} <span class="text-xs text-slate-400">(${m.espessura || ''})</span></td>
+            <td class="p-3">${m.chapa_largura || 0}m x ${m.chapa_comprimento || 0}m</td>
+            <td class="p-3">R$ ${Number(m.custo_chapa || 0).toFixed(2)}</td>
+            <td class="p-3">R$ ${Number(m.custo_m2 || 0).toFixed(2)}</td>
+            <td class="p-3 font-semibold text-emerald-600">R$ ${Number(m.valor_m2 || 0).toFixed(2)}</td>
+            <td class="p-3 text-right">
+              <button onclick="excluirMaterial('${m.id}')" class="text-rose-600 hover:text-rose-800 font-medium text-xs">Excluir</button>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('Erro ao carregar materiais do Supabase:', err.message);
+        atualizarStatus(false, 'Erro de Leitura');
+        tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-rose-500 font-medium">Erro ao carregar: ${err.message}</td></tr>`;
+      }
+    }
+
+    // Excluir Material
+    async function excluirMaterial(id) {
+      if (!confirm('Deseja realmente excluir este material?')) return;
+
+      try {
+        const { error } = await supabaseClient
+          .from('materiais')
+          .delete()
+          .eq('id', id);
+
+        if (error) throw error;
+
+        carregarMateriais();
+      } catch (err) {
+        alert('Erro ao excluir: ' + err.message);
+      }
+    }
+
+    // Carrega a lista automaticamente ao abrir a página
+    window.addEventListener('DOMContentLoaded', carregarMateriais);
+  </script>
+</body>
+</html>
