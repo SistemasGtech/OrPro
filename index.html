@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OrçaPro - GTech Automatização</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- jsPDF & AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- Estilos Customizados e Regras de Impressão -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+  <!-- TELA DE LOGIN -->
+  <div id="telaLogin" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-8 text-center relative">
+        <div class="w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-lg shadow-blue-500/30">
+          <i class="fa-solid fa-calculator"></i>
+        </div>
+        <div class="inline-flex items-center space-x-1.5 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[11px] font-bold tracking-wider uppercase mb-2 border border-blue-400/30">
+          <i class="fa-solid fa-microchip text-blue-400 text-xs"></i>
+          <span>GTech Automatização</span>
+        </div>
+        <h2 class="text-2xl font-black tracking-tight">OrçaPro</h2>
+        <p class="text-xs text-blue-200 mt-1">Gestão Inteligente de Orçamentos e Plano de Corte</p>
+      </div>
+
+      <form onsubmit="realizarLogin(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Usuário (Login) ou E-mail</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="text" id="loginUsuario" required placeholder="Ex: admin" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1.5">Senha</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="password" id="loginSenha" required placeholder="••••••••" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs pt-1">
+          <label class="flex items-center text-slate-600 font-medium cursor-pointer">
+            <input type="checkbox" id="lembrarSessao" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 mr-1.5">
+            Lembrar acesso
+          </label>
+          <button type="button" onclick="abrirModalRecuperarSenha()" class="text-blue-600 hover:text-blue-800 font-bold underline">
+            Esqueci a senha
+          </button>
+        </div>
+
+        <button type="submit" id="btnEntrarLogin" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition active:scale-95 flex items-center justify-center">
+          <i class="fa-solid fa-right-to-bracket mr-2 text-sm"></i> Entrar no Sistema
+        </button>
+      </form>
+    </div>
+
+    <!-- RODAPÉ DA EMPRESA E VERSÃO -->
+    <div class="mt-4 text-center">
+      <div class="inline-flex items-center space-x-2.5 px-4 py-2.5 bg-slate-800/90 border border-slate-700/80 rounded-2xl text-slate-300 text-xs shadow-xl backdrop-blur-md">
+        <i class="fa-solid fa-microchip text-blue-400"></i>
+        <span>Desenvolvido para <strong class="text-white font-extrabold">GTech Automatização</strong></span>
+        <span class="text-slate-600">•</span>
+        <span class="font-mono text-blue-400 font-bold bg-blue-950/60 px-2 py-0.5 rounded-lg border border-blue-800/50">v3.2.0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTAINER PRINCIPAL DO APLICATIVO -->
+  <div id="appContent" class="hidden">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm no-print">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="bg-blue-600 text-white p-2.5 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20">
+            <i class="fa-solid fa-calculator text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-slate-900 leading-tight">OrçaPro</h1>
+            <p class="text-xs text-slate-500 font-medium">Gestão Integrada de Serviços & Plano de Corte</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 flex-wrap justify-end">
+          <div id="badgeUsuarioHeader" class="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 mr-1">
+            <i class="fa-solid fa-user-circle text-blue-600 text-sm"></i>
+            <span id="nomeUsuarioHeader">Usuário</span>
+          </div>
+
+          <button id="btnConfiguracoesHeader" onclick="abrirModalEmpresa()" class="inline-flex items-center px-3.5 py-2 border border-slate-300 text-xs font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-gear mr-1.5 text-slate-400"></i> Configurações
+          </button>
+          <button onclick="abrirModalCatalogoMateriais()" class="inline-flex items-center px-3.5 py-2 border border-purple-300 text-xs font-semibold rounded-xl text-purple-700 bg-purple-50 hover:bg-purple-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-layer-group mr-1.5"></i> Materiais
+          </button>
+          <button onclick="abrirModalServicos()" class="inline-flex items-center px-3.5 py-2 border border-blue-300 text-xs font-semibold rounded-xl text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-list-check mr-1.5"></i> Serviços
+          </button>
+          <button onclick="abrirModalClientes()" class="inline-flex items-center px-3.5 py-2 border border-teal-300 text-xs font-bold rounded-xl text-teal-800 bg-teal-50 hover:bg-teal-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-users mr-1.5 text-teal-600"></i> Clientes (<span id="countClientesHeader">0</span>)
+          </button>
+          <button onclick="abrirModalHistorico()" class="inline-flex items-center px-3.5 py-2 border border-emerald-300 text-xs font-bold rounded-xl text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-clock-rotate-left mr-1.5 text-emerald-600"></i> Histórico (<span id="countHistoricoHeader">0</span>)
+          </button>
+          <button id="btnFinanceiroHeader" onclick="abrirModalFinanceiro()" class="inline-flex items-center px-3.5 py-2 border border-teal-300 text-xs font-bold rounded-xl text-teal-900 bg-teal-50 hover:bg-teal-100 transition shadow-sm active:scale-95 whitespace-nowrap">
+            <i class="fa-solid fa-sack-dollar mr-1.5 text-teal-600"></i> Financeiro: <span id="valTotalVendidoHeader" class="ml-1 text-teal-700 font-extrabold">R$ 0,00</span>
+          </button>
+          <button onclick="realizarLogout()" class="inline-flex items-center px-3 py-2 border border-rose-200 text-xs font-bold rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition shadow-sm active:scale-95 whitespace-nowrap ml-1" title="Sair do Sistema">
+            <i class="fa-solid fa-power-off mr-1"></i> Sair
+          </button>
+          <span class="inline-flex items-center px-2.5 py-1.5 text-[11px] font-mono font-extrabold text-slate-500 bg-slate-100 border border-slate-200 rounded-xl shadow-xs" title="Versão do Sistema">
+            v3.2.0
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 no-print">
+
+      <!-- Card Clientes -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 relative">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-2.5">
+              <i class="fa-solid fa-user-gear text-sm"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-semibold text-slate-800">Clientes</h2>
+              <p class="text-[11px] text-slate-500">Busque um cliente cadastrado ou digite para iniciar um novo atendimento</p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button onclick="abrirModalClientes()" class="text-xs text-teal-700 hover:text-teal-900 font-bold px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50/80 hover:bg-teal-100 transition flex items-center">
+              <i class="fa-solid fa-address-book mr-1.5 text-teal-600"></i> Buscar Clientes
+            </button>
+            <button onclick="salvarClienteRapidoFormulario()" class="text-xs text-blue-700 hover:text-blue-900 font-bold px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50/80 hover:bg-blue-100 transition flex items-center" title="Salvar no cadastro de clientes">
+              <i class="fa-solid fa-user-plus mr-1.5 text-blue-600"></i> + Salvar Cliente
+            </button>
+            <button onclick="limparTudo()" class="text-xs text-rose-500 hover:text-rose-700 font-medium px-2.5 py-1.5 rounded-lg border border-rose-100 hover:bg-rose-50 transition">
+              <i class="fa-solid fa-eraser mr-1"></i> Limpar Formulário
+            </button>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="relative">
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Nome do Cliente</label>
+            <div class="relative">
+              <input type="text" id="clienteNome" 
+                oninput="mascararETratarInputCliente(this)" 
+                onfocus="buscarSugestoesCliente(this.value)"
+                placeholder="Busque ou digite o nome" 
+                autocomplete="off"
+                class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-8 py-2.5 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none transition font-medium">
+              <i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-slate-400 text-xs pointer-events-none"></i>
+            </div>
+
+            <div id="sugestoesClienteDropdown" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-40 max-h-56 overflow-y-auto divide-y divide-slate-100">
+              <!-- JS Injected -->
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Telefone / WhatsApp</label>
+            <input type="text" id="clienteTelefone" 
+              oninput="mascararTelefoneInput(this); renderizarListaItensOrcamento()" 
+              placeholder="(00) 00000-0000" 
+              maxlength="15"
+              class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition font-medium">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Data do Orçamento</label>
+            <input type="date" id="dataOrcamento" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5">Validade da Proposta</label>
+            <input type="date" id="validadeOrcamento" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Coluna Principal -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- PAINEL UNIFICADO DE CRIAÇÃO DE ITEM -->
+          <div id="painelUnificado" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-24">
+            <div class="bg-slate-800 text-white p-4 flex flex-wrap justify-between items-center gap-2">
+              <div class="flex items-center space-x-3">
+                <span class="w-8 h-8 bg-blue-500 text-white rounded-xl flex items-center justify-center font-bold text-sm shadow-md">
+                  <i class="fa-solid fa-sliders"></i>
+                </span>
+                <div>
+                  <h2 class="text-base font-bold">Orçamento</h2>
+                  <p class="text-[11px] text-slate-300">Descreva o item, marque os serviços e configure o corte</p>
+                </div>
+              </div>
+              <input type="hidden" id="editItemId" value="">
+            </div>
+
+            <div class="p-4 space-y-5">
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                  <i class="fa-solid fa-pen-clip mr-1.5 text-blue-600"></i> Descrição do Item <span class="text-rose-600 ml-1 font-black">*</span>
+                </label>
+                <input type="text" id="fixoDescricao" oninput="this.classList.remove('border-rose-500', 'ring-2', 'ring-rose-500')" placeholder="Ex: Armário de Cozinha Suspenso, Painel de TV..." class="w-full text-sm bg-white border border-slate-300 text-slate-800 font-medium rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+              </div>
+
+              <!-- BLOCO 1: SERVIÇOS -->
+              <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h3 class="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-list-check mr-1.5 text-blue-600"></i> 1. Selecionar Serviços
+                  </h3>
+                  <button type="button" onclick="abrirModalServicos()" class="text-[11px] text-blue-700 hover:text-blue-900 font-semibold underline">
+                    + Catálogo de Serviços
+                  </button>
+                </div>
+
+                <div id="painelCheckpointsServicos" class="space-y-2">
+                  <!-- JS Injected -->
+                </div>
+              </div>
+
+              <!-- BLOCO 2: PLANO DE CORTE -->
+              <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-100 space-y-4">
+                <div class="flex items-center justify-between border-b border-purple-200/60 pb-2">
+                  <h3 class="text-xs font-bold text-purple-900 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-layer-group mr-1.5 text-purple-600"></i> 2. Plano de Corte e Material
+                  </h3>
+                  <button type="button" onclick="abrirModalCatalogoMateriais()" class="text-[11px] text-purple-700 hover:text-purple-900 font-semibold underline flex items-center">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> Catálogo de Materiais
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-semibold text-slate-700 mb-1">Material Cadastrado</label>
+                    <select id="fixoMaterialId" onchange="aoSelecionarMaterialFixo(this.value)" class="w-full bg-white border border-purple-300 font-semibold text-slate-800 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                      <!-- JS Injected -->
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-semibold text-purple-900 mb-1 flex items-center justify-between">
+                      <span>Valor m² (R$)</span>
+                      <span class="text-[10px] text-slate-500 font-normal"><i class="fa-solid fa-lock text-[9px] mr-0.5"></i>Auto</span>
+                    </label>
+                    <input type="number" id="fixoValorM2" readonly placeholder="0.00" class="w-full bg-slate-100 border border-purple-200 font-bold text-purple-950 rounded-xl px-3 py-2 text-xs text-right cursor-not-allowed focus:outline-none">
+                  </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-purple-200/80 shadow-sm space-y-3.5">
+                  <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-2.5">
+                    <span class="text-xs font-bold text-slate-800 flex items-center">
+                      <i class="fa-solid fa-ruler-combined text-purple-600 mr-2 text-sm"></i> Medidas da Peça
+                    </span>
+                    <div class="text-xs bg-purple-100/80 border border-purple-300 text-purple-950 font-black px-3 py-1.5 rounded-lg flex items-center space-x-1">
+                      <span class="text-[11px] text-purple-800 font-medium mr-1">Área Calculada:</span>
+                      <span id="displayAreaCalculada" class="font-bold">0,00m x 0,00m = 0,00 m²</span>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-1">
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-1.5">Largura (m)</label>
+                      <input type="number" id="fixoLargura" min="0" step="0.01" placeholder="0.00" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-slate-50 border border-slate-300 text-center font-bold text-slate-800 rounded-xl py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold text-slate-700 mb-1.5">Comprimento (m)</label>
+                      <input type="number" id="fixoComprimento" min="0" step="0.01" placeholder="0.00" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-slate-50 border border-slate-300 text-center font-bold text-slate-800 rounded-xl py-2.5 px-3 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-purple-200/80 shadow-sm space-y-3.5">
+                  <div class="flex flex-wrap justify-between items-center gap-2 border-b border-purple-100 pb-2.5">
+                    <span class="text-xs font-bold text-slate-800 flex items-center">
+                      <i class="fa-solid fa-stopwatch text-purple-600 mr-2 text-sm"></i> Tempo e Valor do Corte
+                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <div id="displayMinutoVal" class="text-xs bg-purple-50 border border-purple-200 text-purple-900 font-bold px-3 py-1 rounded-lg">
+                        R$ 0,00 / min
+                      </div>
+                      <div id="displayCustoCorteVal" class="text-xs bg-emerald-50 border border-emerald-300 text-emerald-800 font-extrabold px-3 py-1 rounded-lg">
+                        Total Corte: R$ 0,00
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-1">
+                    <div>
+                      <label class="block text-xs font-semibold text-purple-950 mb-1.5">Taxa de Serviço / Hora (R$/h)</label>
+                      <input type="number" id="fixoTempoServicoHora" min="0" step="0.01" placeholder="0.00" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-purple-50/60 border border-purple-200 font-bold text-right text-purple-950 rounded-xl py-2.5 px-3.5 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-semibold text-purple-950 mb-1.5">Tempo do Corte (minutos)</label>
+                      <input type="number" id="fixoTempoCorteMin" min="0" step="1" placeholder="0" oninput="atualizarCalculoPreviewUnificado()" class="w-full bg-purple-50/60 border border-purple-200 font-bold text-center text-purple-950 rounded-xl py-2.5 px-3.5 text-sm focus:ring-2 focus:ring-purple-500 focus:bg-white focus:outline-none transition">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-900 text-white p-4 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-md">
+                <div class="text-xs space-y-1">
+                  <div class="flex flex-wrap gap-x-4 text-slate-300">
+                    <span>Serviços do Item: <strong id="prevSubServicos" class="text-white font-bold">R$ 0,00</strong></span>
+                    <span>Material + Corte: <strong id="prevSubCorte" class="text-white font-bold">R$ 0,00</strong></span>
+                  </div>
+                  <div class="text-sm">
+                    TOTAL DO ITEM: <strong id="prevTotalItem" class="text-emerald-400 font-black text-base">R$ 0,00</strong>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                  <button type="button" id="btnCancelarEditUnificado" onclick="cancelarEdicaoUnificada()" class="hidden text-xs bg-slate-700 hover:bg-slate-600 text-white font-medium px-3 py-2 rounded-xl transition">
+                    Cancelar
+                  </button>
+                  <button type="button" id="btnAdicionarUnificado" onclick="adicionarItemAoOrcamento()" class="text-xs bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black px-5 py-2.5 rounded-xl transition shadow-lg flex items-center">
+                    <i class="fa-solid fa-plus-circle mr-1.5 text-sm"></i> Adicionar ao Orçamento
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LISTA DO PEDIDO -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center">
+                <i class="fa-solid fa-cart-flatbed mr-2 text-blue-600"></i> Itens Adicionados ao Pedido
+              </h3>
+              <div id="contagemSelecaoItens" class="text-xs text-slate-500 font-semibold">
+                <!-- JS Injected -->
+              </div>
+            </div>
+
+            <div id="listaItensOrcamento" class="space-y-3">
+              <!-- JS Injected -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Coluna Lateral (Resumo) -->
+        <div class="space-y-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm sticky top-20">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-receipt text-blue-600"></i>
+                <h2 class="text-base font-semibold text-slate-800">Resumo do Orçamento</h2>
+              </div>
+              <span class="text-[10px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">Automático</span>
+            </div>
+
+            <div class="space-y-3.5 text-xs">
+              <div class="flex justify-between items-center bg-blue-50/70 p-2.5 rounded-xl border border-blue-100">
+                <span class="text-slate-600 font-bold flex items-center">
+                  <i class="fa-solid fa-user-tag text-blue-600 mr-1.5"></i> Atendente:
+                </span>
+                <span class="font-extrabold text-blue-950 text-xs" id="resumoVendedor">-</span>
+              </div>
+
+              <div class="flex justify-between items-center text-slate-600">
+                <span>Total Serviços:</span>
+                <span class="font-semibold text-slate-900" id="resumoServicos">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center text-slate-600">
+                <span>Total Plano de corte:</span>
+                <span class="font-semibold text-purple-700" id="resumoProdutos">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center text-slate-500 border-t border-slate-100 pt-2.5">
+                <span>Subtotal:</span>
+                <span class="font-medium" id="resumoSubtotal">R$ 0,00</span>
+              </div>
+
+              <div class="flex justify-between items-center border-t border-slate-100 pt-2.5">
+                <span class="text-slate-600 font-medium">Desconto Geral (R$):</span>
+                <input type="number" id="inputDesconto" placeholder="0.00" min="0" step="0.01" oninput="calcularTotaisGerais()" class="w-24 text-right bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-900">
+              </div>
+
+              <div class="flex justify-between items-center border-t-2 border-slate-200 pt-3 text-sm font-extrabold text-slate-900">
+                <span>VALOR TOTAL:</span>
+                <span class="text-xl text-emerald-600 font-black" id="resumoTotalFinal">R$ 0,00</span>
+              </div>
+            </div>
+
+            <div class="mt-6 space-y-2">
+              <button onclick="fecharPedido()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center uppercase tracking-wider">
+                <i class="fa-solid fa-check-circle mr-2 text-base"></i> Fechar Pedido
+              </button>
+              <button onclick="imprimirOrcamento()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs rounded-xl transition shadow-sm flex items-center justify-center">
+                <i class="fa-solid fa-print mr-2 text-sm"></i> Imprimir Proposta
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ÁREA DE IMPRESSÃO -->
+  <div id="areaImpressao" class="print-only p-8 bg-white text-black font-sans">
+    <div style="display: flex; justify-between: space-between; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 16px;">
+      <div>
+        <h1 id="impEmpresaNome" style="font-size: 20px; font-weight: bold; text-transform: uppercase;">Sua Empresa</h1>
+        <p id="impEmpresaDoc" style="font-size: 11px;">CNPJ/CPF: -</p>
+        <p id="impEmpresaTel" style="font-size: 11px;">Contato: -</p>
+      </div>
+      <div style="text-align: right;">
+        <h2 style="font-size: 14px; font-weight: bold; text-transform: uppercase;">ORÇAMENTO COMERCIAL</h2>
+        <p style="font-size: 11px;">Data: <strong id="impDataOrcamento">-</strong></p>
+        <p style="font-size: 11px;">Validade: <strong id="impValidadeOrcamento">-</strong></p>
+        <p style="font-size: 11px;">Atendente: <strong id="impVendedorNome">-</strong></p>
+      </div>
+    </div>
+
+    <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
+      <p style="font-weight: bold; margin-bottom: 4px;">DADOS DO CLIENTE E ATENDIMENTO</p>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Cliente: <strong id="impClienteNome">-</strong></span>
+        <span>Telefone: <strong id="impClienteTel">-</strong></span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <h3 style="font-size: 12px; font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 8px;">ITENS DO ORÇAMENTO</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 10px; text-align: left;">
+        <thead>
+          <tr style="background-color: #0f172a; color: #fff;">
+            <th style="padding: 6px; border: 1px solid #000;">#</th>
+            <th style="padding: 6px; border: 1px solid #000;">Descrição / Item</th>
+            <th style="padding: 6px; border: 1px solid #000;">Material / Especificação</th>
+            <th style="padding: 6px; border: 1px solid #000; text-align: right;">Total Item (R$)</th>
+          </tr>
+        </thead>
+        <tbody id="impTabelaItens">
+          <!-- JS Injected -->
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end;">
+      <div style="width: 250px; border: 1px solid #000; padding: 10px; font-size: 11px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+          <span>Subtotal:</span>
+          <strong id="impTotalServicos">R$ 0,00</strong>
+        </div>
+        <div id="impDivDesconto" style="display: none; justify-content: space-between; margin-bottom: 4px; color: #dc2626;">
+          <span>Desconto:</span>
+          <strong id="impDesconto">R$ 0,00</strong>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; border-top: 1px solid #000; padding-top: 6px; margin-top: 4px; text-align: center;">
+          <span style="font-size: 11px; font-weight: bold;">VALOR TOTAL:</span>
+          <strong id="impTotalFinal" style="color: #16a34a; font-size: 15px; margin-top: 2px;">R$ 0,00</strong>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 20px; border: 1px solid #cbd5e1; background-color: #f8fafc; padding: 12px; border-radius: 6px; text-align: center; font-size: 11px; line-height: 1.6;">
+      <p style="font-weight: bold; margin-bottom: 2px;">Forma de pagamento: 50% de sinal - na aprovação, Restante na Retirada.</p>
+      <p style="margin-bottom: 2px;">PIX: 22.722.682/0001-89 Luciana Melo Ferreira - ME</p>
+      <p style="font-weight: bold; margin-bottom: 4px;">Prazo de entrega a combinar.</p>
+      <p style="font-weight: bold; color: #1e3a8a; margin-top: 6px; font-size: 12px;">Márcio Charles</p>
+    </div>
+  </div>
+
+  <!-- MODAL PEDIDO FECHADO -->
+  <div id="modalPedidoFechado" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden">
+      <div class="bg-emerald-600 text-white p-5 text-center relative">
+        <button onclick="fecharModalPedido()" class="absolute top-4 right-4 text-emerald-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+        <div class="w-14 h-14 bg-white text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 text-2xl shadow-md">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="text-xl font-extrabold">Pedido Fechado com Sucesso!</h3>
+        <p class="text-xs text-emerald-100 mt-1">O pedido foi gravado no seu Histórico</p>
+      </div>
+
+      <div class="p-5 space-y-4 text-xs">
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+          <div class="flex justify-between border-b border-slate-200 pb-2">
+            <span class="text-slate-500 font-semibold">Cliente:</span>
+            <strong id="modalResumoCliente" class="text-slate-900 font-bold">-</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-200 pb-2">
+            <span class="text-slate-500 font-semibold">Atendente:</span>
+            <strong id="modalResumoVendedor" class="text-blue-900 font-bold">-</strong>
+          </div>
+          <div class="flex justify-between border-b border-slate-200 pb-2">
+            <span class="text-slate-500 font-semibold">Total de Itens:</span>
+            <strong id="modalResumoQtdItens" class="text-slate-900 font-bold">0 itens</strong>
+          </div>
+          <div class="flex justify-between pt-1 text-sm">
+            <span class="text-slate-700 font-bold">Valor Total do Pedido:</span>
+            <strong id="modalResumoValorTotal" class="text-emerald-600 font-black text-base">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div>
+          <p class="text-center font-semibold text-slate-700 mb-2.5">Opções de Exportação e Envio:</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <button onclick="enviarWhatsApp()" class="py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-brands fa-whatsapp text-lg"></i>
+              <span class="text-[11px]">Enviar WhatsApp</span>
+            </button>
+            <button onclick="gerarPDFProposta()" class="py-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-file-pdf text-lg"></i>
+              <span class="text-[11px]">Baixar PDF</span>
+            </button>
+            <button onclick="enviarEmail()" class="py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-envelope text-lg"></i>
+              <span class="text-[11px]">Enviar E-mail</span>
+            </button>
+            <button onclick="imprimirOrcamento()" class="py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition shadow-md flex flex-col items-center justify-center space-y-1 active:scale-95">
+              <i class="fa-solid fa-print text-lg"></i>
+              <span class="text-[11px]">Imprimir</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
+        <button onclick="abrirModalHistorico()" class="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center">
+          <i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Abrir Histórico
+        </button>
+        <button onclick="fecharModalPedido()" class="text-xs text-slate-600 hover:text-slate-900 font-semibold underline">
+          Voltar à Tela Principal
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HISTÓRICO -->
+  <div id="modalHistorico" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-4xl overflow-x-hidden max-h-[90vh] flex flex-col">
+      <div class="bg-slate-800 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Histórico de Orçamentos</h3>
+            <p class="text-xs text-slate-300">Controle de status (Aprovado, Concluído, Recusado, Aguardando Aprovação)</p>
+          </div>
+        </div>
+        <button onclick="fecharModalHistorico()" class="text-slate-300 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold">
+          <button id="btnFiltroStatus_TODOS" onclick="filtrarHistoricoPorStatus('TODOS')" class="px-3 py-1.5 rounded-xl bg-slate-800 text-white shadow-sm transition whitespace-nowrap flex items-center">
+            <i class="fa-solid fa-list mr-1.5"></i> Todos (<span id="cntFiltroTodos">0</span>)
+          </button>
+          <button id="btnFiltroStatus_Aguardando" onclick="filtrarHistoricoPorStatus('Aguardando Aprovação')" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-700 hover:bg-amber-100 hover:text-amber-900 transition whitespace-nowrap flex items-center">
+            <i class="fa-solid fa-hourglass-half mr-1.5 text-amber-600"></i> Aguardando Aprovação (<span id="cntFiltroAguardando">0</span>)
+          </button>
+          <button id="btnFiltroStatus_Aprovado" onclick="filtrarHistoricoPorStatus('Aprovado')" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-700 hover:bg-emerald-100 hover:text-emerald-900 transition whitespace-nowrap flex items-center">
+            <i class="fa-solid fa-circle-check mr-1.5 text-emerald-600"></i> Aprovados (<span id="cntFiltroAprovados">0</span>)
+          </button>
+          <button id="btnFiltroStatus_Concluido" onclick="filtrarHistoricoPorStatus('Concluído')" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-700 hover:bg-blue-100 hover:text-blue-900 transition whitespace-nowrap flex items-center">
+            <i class="fa-solid fa-flag-checkered mr-1.5 text-blue-600"></i> Concluídos (<span id="cntFiltroConcluidos">0</span>)
+          </button>
+          <button id="btnFiltroStatus_Recusado" onclick="filtrarHistoricoPorStatus('Recusado')" class="px-3 py-1.5 rounded-xl bg-slate-200 text-slate-700 hover:bg-rose-100 hover:text-rose-900 transition whitespace-nowrap flex items-center">
+            <i class="fa-solid fa-circle-xmark mr-1.5 text-rose-600"></i> Recusados (<span id="cntFiltroRecusados">0</span>)
+          </button>
+        </div>
+
+        <div class="flex flex-wrap justify-between items-center gap-3">
+          <div class="relative flex-1 min-w-[220px]">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="inputBuscaHistorico" oninput="renderizarListaHistorico()" placeholder="Buscar por cliente, telefone ou atendente..." class="w-full bg-white border border-slate-300 text-xs rounded-xl pl-9 pr-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-y-auto overflow-x-hidden p-4 space-y-3 flex-1" id="listaHistoricoOrcamentos">
+        <!-- JS Injected -->
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalHistorico()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL FINANCEIRO -->
+  <div id="modalFinanceiro" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-teal-900 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-teal-500 text-slate-950 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-chart-line text-lg"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Resumo Financeiro & Vendas</h3>
+            <p class="text-xs text-teal-200">Relatório geral de orçamentos aprovados, concluídos e faturamento</p>
+          </div>
+        </div>
+        <button onclick="fecharModalFinanceiro()" class="text-teal-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+            <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block mb-1">Total Vendido</span>
+            <span id="finTotalAprovados" class="text-lg font-black text-emerald-700">R$ 0,00</span>
+            <span id="finQtdAprovados" class="text-[10px] text-emerald-600 font-semibold block mt-1">0 vendas</span>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-200 p-3.5 rounded-xl">
+            <span class="text-[10px] font-bold text-blue-800 uppercase tracking-wider block mb-1">Setor Concluídos</span>
+            <span id="finTotalConcluidos" class="text-lg font-black text-blue-700">R$ 0,00</span>
+            <span id="finQtdConcluidos" class="text-[10px] text-blue-600 font-semibold block mt-1">0 concluídos</span>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
+            <span class="text-[10px] font-bold text-amber-800 uppercase tracking-wider block mb-1">Aguardando Aprovação</span>
+            <span id="finTotalAguardando" class="text-lg font-black text-amber-700">R$ 0,00</span>
+            <span id="finQtdAguardando" class="text-[10px] text-amber-600 font-semibold block mt-1">0 orçamentos</span>
+          </div>
+
+          <div class="bg-rose-50 border border-rose-200 p-3.5 rounded-xl">
+            <span class="text-[10px] font-bold text-rose-800 uppercase tracking-wider block mb-1">Recusados</span>
+            <span id="finTotalRecusados" class="text-lg font-black text-rose-700">R$ 0,00</span>
+            <span id="finQtdRecusados" class="text-[10px] text-rose-600 font-semibold block mt-1">0 orçamentos</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div class="flex justify-between items-center border-b sm:border-b-0 sm:border-r border-slate-200 pb-2 sm:pb-0 sm:pr-3">
+            <div>
+              <span class="text-slate-500 font-semibold block">Ticket Médio (Aprovados + Concluídos):</span>
+              <span id="finTicketMedio" class="text-base font-extrabold text-slate-800">R$ 0,00</span>
+            </div>
+            <i class="fa-solid fa-calculator text-slate-300 text-2xl"></i>
+          </div>
+
+          <div class="flex justify-between items-center sm:pl-3 pt-2 sm:pt-0">
+            <div>
+              <span class="text-slate-500 font-semibold block">Total Geral de Propostas:</span>
+              <span id="finTotalGeralPropostas" class="text-base font-extrabold text-slate-800">R$ 0,00</span>
+            </div>
+            <i class="fa-solid fa-file-invoice-dollar text-slate-300 text-2xl"></i>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-bold text-slate-800 flex items-center text-xs">
+            <i class="fa-solid fa-users text-teal-600 mr-1.5"></i> Vendas por Atendente:
+          </h4>
+          <div id="finListaPorVendedor" class="space-y-1.5">
+            <!-- JS Injected -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalFinanceiro()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL SERVIÇOS -->
+  <div id="modalServicos" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+            <i class="fa-solid fa-screwdriver-wrench text-xs"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-sm">Gerenciar Catálogo de Serviços</h3>
+        </div>
+        <button onclick="fecharModalServicos()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-4 bg-blue-50/40 border-b border-slate-200 space-y-3">
+        <input type="hidden" id="editServicoId" value="">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600 mb-1">Nome do Serviço</label>
+          <input type="text" id="inputNomeServico" placeholder="Ex: Mão de Obra de Instalação" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-600 mb-1">Valor Padrão (R$)</label>
+          <input type="number" id="inputValorServico" min="0" step="0.01" placeholder="0.00" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div class="flex justify-end space-x-2 pt-1">
+          <button type="button" onclick="limparFormServico()" id="btnCancelarEdit" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+            Cancelar
+          </button>
+          <button type="button" onclick="salvarServicoCatalogo()" id="btnSalvarServico" class="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg transition shadow-sm flex items-center">
+            <i class="fa-solid fa-plus mr-1.5"></i> Salvar e Adicionar
+          </button>
+        </div>
+      </div>
+
+      <div class="p-4">
+        <h4 class="text-xs font-semibold text-slate-500 mb-2">Serviços Cadastrados:</h4>
+        <div class="max-h-52 overflow-y-auto space-y-2 pr-1" id="listaCatalogoServicos">
+          <!-- JS Injected -->
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+        <button onclick="fecharModalServicos()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition">
+          Concluído
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MATERIAIS -->
+  <div id="modalCatalogoMateriais" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-layer-group text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-sm">Gerenciar Catálogo de Materiais</h3>
+            <p class="text-[11px] text-slate-500">Cadastre chapas com cálculo por área (m²)</p>
+          </div>
+        </div>
+        <button onclick="fecharModalCatalogoMateriais()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto p-4 space-y-4 flex-1">
+        <div class="bg-purple-50/50 p-4 rounded-xl border border-purple-200 space-y-3 text-xs">
+          <input type="hidden" id="editMatCatId" value="">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Nome do Material *</label>
+              <input type="text" id="matCatNome" placeholder="Ex: MDF Branco Supremo" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Espessura (mm)</label>
+              <input type="text" id="matCatEspessura" placeholder="Ex: 15mm" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="bg-white p-3.5 rounded-xl border border-purple-200/80 space-y-3">
+            <div class="flex items-center justify-between border-b border-purple-100 pb-2">
+              <span class="font-bold text-purple-900">Dimensões da Chapa Inteira (m)</span>
+              <span id="displayAreaTotalChapaModal" class="font-extrabold text-purple-950 bg-purple-100 px-2.5 py-0.5 rounded-md text-[11px]">0,00 m²</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">Largura (m)</label>
+                <input type="number" id="matCatChapaLargura" step="0.01" placeholder="1.85" oninput="calcularValoresModalMaterial()" class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block font-medium text-slate-600 mb-1">Comprimento (m)</label>
+                <input type="number" id="matCatChapaComprimento" step="0.01" placeholder="2.75" oninput="calcularValoresModalMaterial()" class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Custo da Chapa (R$)</label>
+              <input type="number" id="matCatCustoChapa" step="0.01" placeholder="250.00" oninput="calcularValoresModalMaterial()" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Custo por m² (R$)</label>
+              <input type="number" id="matCatCustoM2" step="0.01" placeholder="49.12" oninput="calcularValoresModalMaterial(false)" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Margem / Sobra (%)</label>
+              <input type="number" id="matCatSobra" step="1" placeholder="20" oninput="calcularValoresModalMaterial()" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block font-extrabold text-purple-950 mb-1">Valor Venda m² (R$)</label>
+              <input type="number" id="matCatValorM2" step="0.01" placeholder="58.94" class="w-full bg-purple-100 border border-purple-300 text-purple-950 font-bold text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 pt-1">
+            <button type="button" id="btnCancelarEditMat" onclick="limparFormMaterialCatalogo()" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+              Cancelar
+            </button>
+            <button type="button" id="btnSalvarMatCat" onclick="salvarMaterialCatalogo()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm flex items-center">
+              <i class="fa-solid fa-plus mr-1.5"></i> Salvar Material
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="text-xs font-bold text-slate-700">Materiais Cadastrados (<span id="countMateriais">0</span>):</h4>
+          <div id="listaCatalogoMateriais" class="space-y-2">
+            <!-- JS Injected -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalCatalogoMateriais()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Concluído
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GERENCIAR CLIENTES -->
+  <div id="modalClientes" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div class="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold shadow-md">
+            <i class="fa-solid fa-users text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Cadastro e Gestão de Clientes</h3>
+            <p class="text-xs text-teal-200">Cadastre clientes sem duplicidades e selecione para os orçamentos</p>
+          </div>
+        </div>
+        <button onclick="fecharModalClientes()" class="text-slate-300 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto p-4 space-y-4 flex-1">
+        <div class="bg-teal-50/60 p-4 rounded-xl border border-teal-200 space-y-3">
+          <div class="flex items-center justify-between border-b border-teal-200/80 pb-2">
+            <h4 class="text-xs font-bold text-teal-900 flex items-center">
+              <i class="fa-solid fa-user-plus mr-1.5 text-teal-600"></i> Cadastrar / Editar Cliente
+            </h4>
+            <span class="text-[10px] text-teal-800 bg-teal-100 font-bold px-2 py-0.5 rounded-full border border-teal-200">
+              Anti-duplicidade ativada
+            </span>
+          </div>
+
+          <input type="hidden" id="editClienteId" value="">
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Nome do Cliente *</label>
+              <input type="text" id="cliNome" placeholder="Ex: Maria das Dores" class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-none font-medium">
+            </div>
+
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Telefone / WhatsApp *</label>
+              <input type="text" id="cliTelefone" 
+                oninput="mascararTelefoneInput(this)" 
+                placeholder="Ex: (11) 99999-8888" 
+                maxlength="15"
+                class="w-full bg-white border border-slate-300 text-xs rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-teal-500 focus:outline-none font-medium">
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 pt-1">
+            <button type="button" id="btnCancelarEditCli" onclick="limparFormClienteCatalogo()" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+              Cancelar
+            </button>
+            <button type="button" id="btnSalvarCli" onclick="salvarClienteCatalogo()" class="text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm flex items-center">
+              <i class="fa-solid fa-floppy-disk mr-1.5"></i> Salvar Cliente
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <h4 class="text-xs font-bold text-slate-700">Clientes Cadastrados (<span id="countClientes">0</span>):</h4>
+            <div class="relative flex-1 min-w-[200px] max-w-xs">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+              <input type="text" id="inputBuscaCliente" oninput="renderizarCatalogoClientes()" placeholder="Buscar cliente por nome ou telefone..." class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div id="listaCatalogoClientes" class="space-y-2">
+            <!-- JS Injected -->
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right shrink-0">
+        <button onclick="fecharModalClientes()" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition">
+          Concluído
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIGURAÇÕES / EMPRESA -->
+  <div id="modalEmpresa" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md">
+            <i class="fa-solid fa-gear text-base"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base">Configurações do Sistema</h3>
+            <p class="text-xs text-slate-300">Dados da empresa, gestão de usuários e nuvem Supabase</p>
+          </div>
+        </div>
+        <button onclick="fecharModalEmpresa()" class="text-slate-300 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <div class="bg-slate-100 p-2.5 border-b border-slate-200 flex items-center gap-2 overflow-x-auto shrink-0">
+        <button id="btnTabConfig_empresa" onclick="trocarAbaConfig('empresa')" class="tab-config-btn px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-2 bg-blue-600 text-white shadow-sm whitespace-nowrap">
+          <i class="fa-solid fa-building text-sm"></i>
+          <span>Dados da Empresa</span>
+        </button>
+        <button id="btnTabConfig_usuarios" onclick="trocarAbaConfig('usuarios')" class="tab-config-btn px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-2 bg-slate-200 text-slate-700 hover:bg-slate-300 whitespace-nowrap">
+          <i class="fa-solid fa-user-gear text-sm"></i>
+          <span>Gestão de Usuários</span>
+        </button>
+        <button id="btnTabConfig_supabase" onclick="trocarAbaConfig('supabase')" class="tab-config-btn px-4 py-2 text-xs font-bold rounded-xl transition flex items-center space-x-2 bg-slate-200 text-slate-700 hover:bg-slate-300 whitespace-nowrap">
+          <i class="fa-solid fa-database text-sm text-emerald-600"></i>
+          <span>Banco Supabase</span>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 flex-1">
+        <!-- TAB EMPRESA -->
+        <div id="tabConfig_empresa" class="tab-config-content space-y-4">
+          <div class="bg-blue-50/60 border border-blue-100 p-3.5 rounded-xl flex items-center space-x-2.5">
+            <i class="fa-solid fa-circle-info text-blue-600 text-sm shrink-0"></i>
+            <p class="text-xs text-blue-950 font-medium">Estes dados aparecem no cabeçalho dos arquivos PDF e impressões.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 uppercase mb-1">Razão Social / Nome Fantasia *</label>
+              <input type="text" id="empresaNome" placeholder="Ex: GTech Automatização" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">CNPJ ou CPF *</label>
+              <input type="text" id="empresaDoc" placeholder="Ex: 00.000.000/0001-00" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Telefone / WhatsApp *</label>
+              <input type="text" id="empresaTel" oninput="mascararTelefoneInput(this)" placeholder="Ex: (11) 98888-7777" maxlength="15" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">E-mail Comercial</label>
+              <input type="email" id="empresaEmail" placeholder="Ex: contato@gtech.com.br" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Chave PIX</label>
+              <input type="text" id="empresaPix" placeholder="Ex: CNPJ / E-mail / Celular" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 uppercase mb-1">Endereço Completo</label>
+              <input type="text" id="empresaEndereco" placeholder="Ex: Rua, Número, Bairro, Cidade/UF" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB USUÁRIOS -->
+        <div id="tabConfig_usuarios" class="tab-config-content space-y-4 hidden">
+          <div class="bg-purple-50/60 border border-purple-100 p-3.5 rounded-xl flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2.5">
+              <i class="fa-solid fa-user-shield text-purple-600 text-sm shrink-0"></i>
+              <p class="text-xs text-purple-950 font-medium">Cadastre novos atendentes com criptografia e sincronização automática.</p>
+            </div>
+            <button type="button" onclick="abrirModalRecuperarSenha()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition whitespace-nowrap flex items-center">
+              <i class="fa-brands fa-whatsapp mr-1.5"></i> Recuperação via WhatsApp
+            </button>
+          </div>
+
+          <div class="bg-purple-50/40 p-4 rounded-xl border border-purple-200 space-y-3">
+            <div class="flex items-center justify-between border-b border-purple-100 pb-2">
+              <h4 class="text-xs font-bold text-purple-900 flex items-center">
+                <i class="fa-solid fa-user-plus mr-1.5 text-purple-600"></i> Cadastrar / Editar Usuário
+              </h4>
+              <span class="text-[10px] text-purple-700 font-semibold">Criptografia SHA-256 ativada</span>
+            </div>
+
+            <input type="hidden" id="editUsuarioId" value="">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nome Completo *</label>
+                <input type="text" id="usrNome" placeholder="Ex: João da Silva" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Nome de Usuário (Login) *</label>
+                <input type="text" id="usrLogin" placeholder="Ex: joao" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">E-mail *</label>
+                <input type="email" id="usrEmail" placeholder="Ex: joao@gtech.com.br" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Telefone / WhatsApp *</label>
+                <input type="text" id="usrTelefone" oninput="mascararTelefoneInput(this)" placeholder="Ex: (11) 98888-7777" maxlength="15" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Senha de Acesso *</label>
+                <input type="password" id="usrSenha" placeholder="••••••••" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none">
+              </div>
+
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Perfil de Acesso</label>
+                <select id="usrPerfil" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none font-medium text-slate-800">
+                  <option value="Administrador">Administrador</option>
+                  <option value="Atendente">Atendente</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex justify-end space-x-2 pt-1">
+              <button type="button" id="btnCancelarEditUsr" onclick="limparFormUsuario()" class="hidden text-xs text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-300 bg-white">
+                Cancelar
+              </button>
+              <button type="button" id="btnSalvarUsr" onclick="salvarUsuario()" class="text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm flex items-center">
+                <i class="fa-solid fa-plus mr-1.5"></i> Salvar Usuário
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <h4 class="text-xs font-bold text-slate-700">Usuários Cadastrados (<span id="countUsuarios">0</span>):</h4>
+            </div>
+            <div id="listaUsuariosCadastrados" class="space-y-2">
+              <!-- JS Injected -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB SUPABASE -->
+        <div id="tabConfig_supabase" class="tab-config-content space-y-4 hidden">
+          <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+                <i class="fa-solid fa-database text-sm"></i>
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-800 text-xs">Status da Conexão Supabase</h4>
+                <p class="text-[11px] text-slate-500">Conexão ativa com o banco PostgreSQL na nuvem</p>
+              </div>
+            </div>
+            <div id="statusSupabaseBadge" class="text-[10px] font-extrabold px-3 py-1 rounded-full bg-slate-200 text-slate-700 uppercase tracking-wider flex items-center">
+              <span class="w-2 h-2 rounded-full bg-slate-400 mr-1.5"></span> Desconectado
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">URL do Projeto Supabase *</label>
+              <input type="text" id="supabaseUrlInput" placeholder="https://xyz.supabase.co" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">API Key (anon / public) *</label>
+              <input type="password" id="supabaseKeyInput" placeholder="eyJhbGciOiJIUzI1NiIsIn..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 font-mono text-xs text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none">
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <button type="button" onclick="desconectarSupabase()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">
+                Desconectar
+              </button>
+              <button type="button" onclick="testarEConectarSupabase()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-md flex items-center">
+                <i class="fa-solid fa-plug mr-1.5"></i> Conectar e Sincronizar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex justify-end space-x-2 shrink-0">
+        <button onclick="fecharModalEmpresa()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition">
+          Cancelar
+        </button>
+        <button onclick="salvarDadosEmpresa()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-blue-600/20 flex items-center">
+          <i class="fa-solid fa-floppy-disk mr-1.5"></i> Salvar Configurações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RECUPERAÇÃO DE SENHA VIA WHATSAPP -->
+  <div id="modalRecuperarSenha" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] flex items-center justify-center hidden no-print p-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-6 text-center relative">
+        <button onclick="fecharModalRecuperarSenha()" class="absolute top-4 right-4 text-emerald-200 hover:text-white p-1">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+        <div class="w-14 h-14 bg-emerald-500 text-slate-950 rounded-2xl flex items-center justify-center mx-auto mb-2 text-2xl shadow-lg shadow-emerald-500/30">
+          <i class="fa-brands fa-whatsapp"></i>
+        </div>
+        <h3 class="text-xl font-extrabold">Recuperação via WhatsApp</h3>
+        <p class="text-xs text-emerald-100 mt-1">O código de verificação será enviado para o seu número</p>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs">
+        <!-- PASSO 1: INFORMAR NÚMERO OU LOGIN -->
+        <div id="passoRecuperacao1" class="space-y-4">
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1.5">Número do WhatsApp ou Login:</label>
+            <div class="relative">
+              <i class="fa-brands fa-whatsapp absolute left-3.5 top-3.5 text-emerald-600 text-sm"></i>
+              <input type="text" id="inputWhatsAppRecuperacao" oninput="mascararTelefoneInput(this)" placeholder="(11) 98888-7777 ou usuário" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-3 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition">
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1.5">Ao clicar no botão abaixo, o aplicativo abrirá o seu WhatsApp com a mensagem e o código de segurança preenchidos.</p>
+          </div>
+
+          <button id="btnEnviarCodigoRec" onclick="enviarCodigoWhatsApp()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center">
+            <i class="fa-brands fa-whatsapp mr-2 text-base"></i> Enviar Código via WhatsApp
+          </button>
+        </div>
+
+        <!-- PASSO 2: VALIDAR CÓDIGO E DEFINIR SENHA -->
+        <div id="passoRecuperacao2" class="space-y-4 hidden">
+          <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-emerald-900 space-y-1">
+            <p class="font-bold flex items-center text-xs">
+              <i class="fa-solid fa-circle-check mr-1.5 text-emerald-600 text-sm"></i> Código enviado para o seu WhatsApp!
+            </p>
+            <p class="text-[11px] text-emerald-700" id="msgDestinoCodigo">Confira a mensagem enviada no seu aplicativo.</p>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Digite o Código de 6 dígitos recebido no WhatsApp:</label>
+            <input type="text" id="inputCodigoSMS" maxlength="6" placeholder="000000" class="w-full text-center tracking-widest text-lg bg-slate-50 border border-slate-300 font-black rounded-xl px-3 py-2.5 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 uppercase mb-1">Nova Senha:</label>
+            <input type="password" id="inputNovaSenhaRecuperada" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+
+          <button onclick="validarCodigoERedefinirSenha()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center">
+            <i class="fa-solid fa-key mr-2"></i> Redefinir Senha
+          </button>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+        <button onclick="fecharModalRecuperarSenha()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-xl text-xs">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center space-x-2.5 pointer-events-none">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+    <span id="toastMsg">Operação realizada com sucesso!</span>
+  </div>
+
+  <!-- Script Principal Modular (ES6 Módulos) -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

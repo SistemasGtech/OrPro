@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+body { 
+  font-family: 'Inter', sans-serif; 
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { 
+    background-color: #ffffff !important; 
+    color: #000000 !important; 
+    font-size: 12pt; 
+    padding: 0 !important; 
+    margin: 0 !important; 
+  }
+  #areaImpressao { 
+    display: block !important; 
+    position: static !important; 
+    width: 100% !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+  }
+}
+
+.print-only { 
+  display: none; 
+}
